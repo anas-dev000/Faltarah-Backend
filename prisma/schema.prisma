@@ -1,0 +1,365 @@
+// Prisma Schema for Multi-Company Filter & AC Management System
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =====================================================
+// Company Entity
+// =====================================================
+model Company {
+  id                     Int       @id @default(autoincrement()) @map("company_id")
+  name                   String    @unique @db.VarChar(255)
+  logo                   String?   @db.VarChar(500)
+  address                String?   @db.Text
+  email                  String?   @db.VarChar(255)
+  phone                  String?   @db.VarChar(15)
+  subscriptionExpiryDate DateTime? @map("subscription_expiry_date") @db.Timestamp(6)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  // Relations
+  users              User[]
+  customers          Customer[]
+  employees          Employee[]
+  suppliers          Supplier[]
+  products           Product[]
+  accessories        Accessory[]
+  services           Service[]
+  maintenances       Maintenance[]
+  invoices           Invoice[]
+  invoiceItems       InvoiceItem[]
+
+  @@map("companies")
+}
+
+// =====================================================
+// User Entity
+// =====================================================
+model User {
+  id           Int      @id @default(autoincrement()) @map("user_id")
+  companyId    Int      @map("company_id")
+  fullName     String   @map("full_name") @db.VarChar(255)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  role         String   @db.VarChar(50) // 'employee', 'manager', 'developer'
+  status       String   @default("Active") @db.VarChar(20) // 'Active', 'Inactive'
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  // Relations
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("users")
+}
+
+// =====================================================
+// Customer Entity
+// =====================================================
+model Customer {
+  id              Int      @id @default(autoincrement()) @map("customer_id")
+  fullName        String   @map("full_name") @db.VarChar(255)
+  customerType    String   @map("customer_type") @db.VarChar(50) // 'Installation', 'Maintenance'
+  nationalId      String   @map("national_id") @db.Char(14)
+  idCardImage     String?  @map("id_card_image") @db.VarChar(500)
+  primaryNumber   String   @map("primary_number") @db.VarChar(15)
+  secondaryNumber String?  @map("secondary_number") @db.VarChar(15)
+  governorate     String   @db.VarChar(100)
+  city            String   @db.VarChar(100)
+  district        String   @db.VarChar(100)
+  companyId       Int      @map("company_id")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  // Relations
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoices     Invoice[]
+  maintenances Maintenance[]
+  installmentPayments InstallmentPayment[]
+
+  @@index([companyId])
+  @@index([nationalId])
+  @@map("customers")
+}
+
+// =====================================================
+// Employee Entity
+// =====================================================
+model Employee {
+  id              Int      @id @default(autoincrement()) @map("employee_id")
+  fullName        String   @map("full_name") @db.VarChar(255)
+  nationalId      String   @map("national_id") @db.Char(14)
+  idCardImage     String?  @map("id_card_image") @db.VarChar(500)
+  role            String   @db.VarChar(50) // 'SalesRep', 'Technician'
+  primaryNumber   String   @map("primary_number") @db.VarChar(15)
+  secondaryNumber String?  @map("secondary_number") @db.VarChar(15)
+  city            String   @db.VarChar(100)
+  district        String   @db.VarChar(100)
+  governorate     String   @db.VarChar(100)
+  companyId       Int      @map("company_id")
+  isEmployed      Boolean  @default(true) @map("is_employed")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  // Relations
+  company              Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoicesAsSalesRep   Invoice[]     @relation("SalesRepInvoices")
+  invoicesAsTechnician Invoice[]     @relation("TechnicianInvoices")
+  maintenances         Maintenance[]
+
+  @@index([companyId])
+  @@index([role])
+  @@map("employees")
+}
+
+// =====================================================
+// Supplier Entity
+// =====================================================
+model Supplier {
+  id          Int    @id @default(autoincrement()) @map("supplier_id")
+  name        String @db.VarChar(255)
+  contactInfo String @map("contact_info") @db.Text
+  companyId   Int    @map("company_id")
+
+  // Relations
+  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  products    Product[]
+  accessories Accessory[]
+
+  @@index([companyId])
+  @@map("suppliers")
+}
+
+// =====================================================
+// Product Entity
+// =====================================================
+model Product {
+  id         Int     @id @default(autoincrement()) @map("product_id")
+  name       String  @db.VarChar(255)
+  category   String  @db.VarChar(100)
+  price      Decimal @db.Decimal(10, 2)
+  stock      Int     @default(0)
+  supplierId Int     @map("supplier_id")
+  companyId  Int     @map("company_id")
+
+  // Relations
+  company            Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  supplier           Supplier             @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  productAccessories ProductAccessory[]
+  maintenances       Maintenance[]
+  invoiceItems       InvoiceItem[]
+
+  @@index([companyId])
+  @@index([supplierId])
+  @@index([category])
+  @@map("products")
+}
+
+// =====================================================
+// Accessory Entity
+// =====================================================
+model Accessory {
+  id         Int     @id @default(autoincrement()) @map("accessory_id")
+  name       String  @db.VarChar(255)
+  price      Decimal @db.Decimal(10, 2)
+  stock      Int     @default(0)
+  supplierId Int     @map("supplier_id")
+  companyId  Int     @map("company_id")
+
+  // Relations
+  company            Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  supplier           Supplier             @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  productAccessories ProductAccessory[]
+  invoiceItems       InvoiceItem[]
+
+  @@index([companyId])
+  @@index([supplierId])
+  @@map("accessories")
+}
+
+// =====================================================
+// ProductAccessory Junction Table
+// =====================================================
+model ProductAccessory {
+  id          Int @id @default(autoincrement()) @map("product_accessory_id")
+  productId   Int @map("product_id")
+  accessoryId Int @map("accessory_id")
+
+  // Relations
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  accessory Accessory @relation(fields: [accessoryId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, accessoryId])
+  @@index([productId])
+  @@index([accessoryId])
+  @@map("product_accessories")
+}
+
+// =====================================================
+// Service Entity
+// =====================================================
+model Service {
+  id          Int     @id @default(autoincrement()) @map("service_id")
+  name        String  @db.VarChar(255)
+  description String? @db.Text
+  price       Decimal @db.Decimal(10, 2)
+  companyId   Int     @map("company_id")
+
+  // Relations
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  maintenances Maintenance[]
+  invoiceItems InvoiceItem[]
+
+  @@index([companyId])
+  @@map("services")
+}
+
+// =====================================================
+// Invoice Entity
+// =====================================================
+model Invoice {
+  id                     Int      @id @default(autoincrement()) @map("invoice_id")
+  customerId             Int      @map("customer_id")
+  salesRepId             Int      @map("sales_rep_id")
+  technicianId           Int?     @map("technician_id")
+  companyId              Int      @map("company_id")
+  totalAmount            Decimal  @default(0) @map("total_amount") @db.Decimal(10, 2)
+  discountAmount         Decimal  @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  saleType               String   @map("sale_type") @db.VarChar(20) // 'Cash', 'Installment'
+  maintenancePeriod      Int?     @map("maintenance_period") // Months
+  paidAtContract         Decimal  @default(0) @map("paid_at_contract") @db.Decimal(10, 2)
+  paidAtInstallation     Decimal  @default(0) @map("paid_at_installation") @db.Decimal(10, 2)
+  installationCostType   String   @default("Percentage") @map("installation_cost_type") @db.VarChar(20) // 'Percentage', 'Fixed'
+  installationCostValue  Decimal  @default(0) @map("installation_cost_value") @db.Decimal(10, 2)
+  contractDate           DateTime @map("contract_date") @db.Timestamp(6)
+  installationDate       DateTime? @map("installation_date") @db.Timestamp(6)
+  contractNotes          String?  @map("contract_notes") @db.Text
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  // Relations
+  company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer    Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  salesRep    Employee      @relation("SalesRepInvoices", fields: [salesRepId], references: [id], onDelete: Restrict)
+  technician  Employee?     @relation("TechnicianInvoices", fields: [technicianId], references: [id], onDelete: Restrict)
+  invoiceItems InvoiceItem[]
+  installment Installment?
+
+  @@index([companyId])
+  @@index([customerId])
+  @@index([salesRepId])
+  @@index([technicianId])
+  @@index([saleType])
+  @@index([contractDate])
+  @@map("invoices")
+}
+
+// =====================================================
+// InvoiceItem Entity
+// =====================================================
+model InvoiceItem {
+  id          Int     @id @default(autoincrement()) @map("invoice_item_id")
+  invoiceId   Int     @map("invoice_id")
+  productId   Int?    @map("product_id")
+  accessoryId Int?    @map("accessory_id")
+  serviceId   Int?    @map("service_id")
+  companyId   Int     @map("company_id")
+  quantity    Int     @default(1)
+  unitPrice   Decimal @map("unit_price") @db.Decimal(10, 2)
+  subtotal    Decimal @db.Decimal(10, 2)
+
+  // Relations
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoice   Invoice    @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product   Product?   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  accessory Accessory? @relation(fields: [accessoryId], references: [id], onDelete: Restrict)
+  service   Service?   @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  @@index([companyId])
+  @@index([invoiceId])
+  @@index([productId])
+  @@index([accessoryId])
+  @@index([serviceId])
+  @@map("invoice_items")
+}
+
+// =====================================================
+// Installment Entity
+// =====================================================
+model Installment {
+  id                  Int      @id @default(autoincrement()) @map("installment_id")
+  invoiceId           Int      @unique @map("invoice_id")
+  numberOfMonths      Int      @map("number_of_months")
+  monthlyInstallment  Decimal  @map("monthly_installment") @db.Decimal(10, 2)
+  collectionStartDate DateTime @map("collection_start_date") @db.Timestamp(6)
+  collectionEndDate   DateTime @map("collection_end_date") @db.Timestamp(6)
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  // Relations
+  invoice             Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  installmentPayments InstallmentPayment[]
+
+  @@index([invoiceId])
+  @@map("installments")
+}
+
+// =====================================================
+// InstallmentPayment Entity
+// =====================================================
+model InstallmentPayment {
+  id              Int       @id @default(autoincrement()) @map("payment_id")
+  installmentId   Int       @map("installment_id")
+  customerId      Int       @map("customer_id")
+  amountDue       Decimal   @map("amount_due") @db.Decimal(10, 2)
+  amountPaid      Decimal   @default(0) @map("amount_paid") @db.Decimal(10, 2)
+  carryoverAmount Decimal   @default(0) @map("carryover_amount") @db.Decimal(10, 2)
+  overdueAmount   Decimal   @default(0) @map("overdue_amount") @db.Decimal(10, 2)
+  status          String    @default("Pending") @db.VarChar(20) // 'Paid', 'Partial', 'Pending'
+  dueDate         DateTime  @map("due_date") @db.Timestamp(6)
+  paymentDate     DateTime? @map("payment_date") @db.Timestamp(6)
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  // Relations
+  installment Installment @relation(fields: [installmentId], references: [id], onDelete: Cascade)
+  customer    Customer    @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  @@index([installmentId])
+  @@index([customerId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("installment_payments")
+}
+
+// =====================================================
+// Maintenance Entity
+// =====================================================
+model Maintenance {
+  id              Int      @id @default(autoincrement()) @map("maintenance_id")
+  customerId      Int      @map("customer_id")
+  serviceId       Int      @map("service_id")
+  productId       Int      @map("product_id")
+  technicianId    Int      @map("technician_id")
+  companyId       Int      @map("company_id")
+  maintenanceDate DateTime @map("maintenance_date") @db.Timestamp(6)
+  price           Decimal  @db.Decimal(10, 2)
+  status          String   @db.VarChar(20) // 'Pending', 'Completed'
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  // Relations
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  technician Employee @relation(fields: [technicianId], references: [id], onDelete: Restrict)
+
+  @@index([companyId])
+  @@index([customerId])
+  @@index([technicianId])
+  @@index([status])
+  @@index([maintenanceDate])
+  @@map("maintenances")
+}
