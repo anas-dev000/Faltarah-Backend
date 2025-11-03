@@ -10,6 +10,7 @@ import {
 } from "./users.schema.js";
 import { validateSchema } from "../../shared/utils/validateSchema.js";
 import { authenticate } from "../../shared/middlewares/auth.middleware.js";
+import { authorize } from "../../shared/middlewares/authorize.middleware.js";
 
 const validateBody = (schema) => {
   return async (request, reply) => {
@@ -17,6 +18,7 @@ const validateBody = (schema) => {
 
     if (!validation.valid) {
       return reply.status(400).send({
+        success: false,
         error: "Validation Error",
         details: validation.errors,
       });
@@ -25,39 +27,72 @@ const validateBody = (schema) => {
 };
 
 export default async function userRoutes(fastify) {
-  // Public: Login
+  // ========================================
+  // Public Routes
+  // ========================================
+
   fastify.post("/login", {
     preHandler: [validateBody(loginSchema)],
     handler: userController.login,
   });
 
-  // Protected: Get all users
-  fastify.get("/", {
+  // ========================================
+  // Protected Routes - Profile Management
+  // ========================================
+
+  // Retrieve the current user's profile (available to all users)
+  fastify.get("/profile", {
     preHandler: [authenticate],
+    handler: userController.getProfile,
+  });
+
+  // Update the current user's profile (available to all users)
+  fastify.put("/profile", {
+    preHandler: [authenticate, validateBody(updateUserSchema)],
+    handler: userController.updateProfile,
+  });
+
+  // Log out (available to all users)
+  fastify.post("/logout", {
+    preHandler: [authenticate],
+    handler: userController.logout,
+  });
+
+  // ========================================
+  // Protected Routes - User Management
+  // ========================================
+
+  // Get all users (Manager, Developer only)
+  fastify.get("/", {
+    preHandler: [authenticate, authorize(["manager", "developer"])],
     handler: userController.getAll,
   });
 
-  // Protected: Get user by id
+  // Get a user by ID (all users - with permission checks in the service)
   fastify.get("/:id", {
     preHandler: [authenticate],
     handler: userController.getById,
   });
 
-  // Protected: Create user
+  // Create a new user (Manager, Developer only)
   fastify.post("/", {
-    preHandler: [authenticate, validateBody(createUserSchema)],
+    preHandler: [
+      authenticate,
+      authorize(["manager", "developer"]),
+      validateBody(createUserSchema),
+    ],
     handler: userController.create,
   });
 
-  // Protected: Update user
+  // Update user (all users - with permission checks in the service)
   fastify.put("/:id", {
     preHandler: [authenticate, validateBody(updateUserSchema)],
     handler: userController.update,
   });
 
-  // Protected: Delete user
+  // Delete user (Developer only)
   fastify.delete("/:id", {
-    preHandler: [authenticate],
+    preHandler: [authenticate, authorize(["developer"])],
     handler: userController.deleteById,
   });
 }

@@ -32,7 +32,7 @@ export function errorHandler(error, request, reply) {
   // Custom AppError
   if (error instanceof AppError) {
     return reply.status(error.statusCode).send({
-      error: ERROR_CODES[error.message] || "ERROR",
+      error: ERROR_CODES[error.message] || "APP_ERROR",
       message: error.message,
       timestamp: error.timestamp,
     });

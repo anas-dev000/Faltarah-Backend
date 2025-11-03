@@ -7,11 +7,21 @@ async function start() {
 
     await app.listen({
       port: config.port,
-      host: "127.0.0.1",
+      host: "0.0.0.0",
     });
 
-    console.log(`🚀 Server listening on port ${config.port}`);
-    console.log(`📚 Environment: ${config.nodeEnv}`);
+    await app.ready();
+    app.log.info(`🚀 Server listening on port ${config.port}`);
+    app.log.info(`📚 Environment: ${config.nodeEnv}`);
+
+    const closeApp = async () => {
+      await app.close();
+      console.log("🛑 Server gracefully stopped");
+      process.exit(0);
+    };
+
+    process.on("SIGINT", closeApp);
+    process.on("SIGTERM", closeApp);
   } catch (error) {
     console.error("❌ Error starting server:", error);
     process.exit(1);
@@ -19,5 +29,3 @@ async function start() {
 }
 
 start();
-
-process.on("exit", () => console.log("👋 Server stopped"));
