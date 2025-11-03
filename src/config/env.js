@@ -15,4 +15,5 @@ export const config = {
   logging: {
     level: process.env.LOG_LEVEL || "info",
   },
+  cookieSecret: process.env.COOKIE_SECRET,
 };

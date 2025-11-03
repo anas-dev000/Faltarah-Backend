@@ -6,6 +6,7 @@ import { errorHandler } from "./shared/middlewares/errorHandler.middleware.js";
 import prismaPlugin from "./plugins/prisma.js";
 import corsPlugin from "./plugins/cors.js";
 import helmetPlugin from "./plugins/helmet.js";
+import fastifyCookie from "@fastify/cookie";
 
 // Routes
 import userRoutes from "./modules/users/users.routes.js";
@@ -32,6 +33,10 @@ export async function buildApp(opts = {}) {
   await app.register(prismaPlugin);
   await app.register(corsPlugin);
   await app.register(helmetPlugin);
+  await app.register(fastifyCookie, {
+    secret: config.cookieSecret,
+    parseOptions: {},
+  });
 
   // Health Check
   app.get("/", async () => {
