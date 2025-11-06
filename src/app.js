@@ -7,10 +7,12 @@ import prismaPlugin from "./plugins/prisma.js";
 import corsPlugin from "./plugins/cors.js";
 import helmetPlugin from "./plugins/helmet.js";
 import fastifyCookie from "@fastify/cookie";
+import fastifyMultipart from "@fastify/multipart";
+
 
 // Routes
 import userRoutes from "./modules/users/users.routes.js";
-
+import customerRoutes from "./modules/customers/customers.routes.js";
 export async function buildApp(opts = {}) {
   const app = Fastify({
     logger: {
@@ -18,12 +20,12 @@ export async function buildApp(opts = {}) {
       transport:
         config.nodeEnv === "development"
           ? {
-              target: "pino-pretty",
-              options: {
-                translateTime: "HH:MM:ss Z",
-                ignore: "pid,hostname",
-              },
-            }
+            target: "pino-pretty",
+            options: {
+              translateTime: "HH:MM:ss Z",
+              ignore: "pid,hostname",
+            },
+          }
           : undefined,
     },
     ...opts,
@@ -37,7 +39,9 @@ export async function buildApp(opts = {}) {
     secret: config.cookieSecret,
     parseOptions: {},
   });
-
+  await app.register(fastifyMultipart, {
+  limits: { fileSize: 5 * 1024 * 1024 }, // حد أقصى 5 ميجا
+  });
   // Health Check
   app.get("/", async () => {
     return { status: "ok", timestamp: new Date().toISOString() };
@@ -45,7 +49,7 @@ export async function buildApp(opts = {}) {
 
   // Register Routes
   await app.register(userRoutes, { prefix: "/api/users" });
-
+  await app.register(customerRoutes, { prefix: "/api/customers" })
   // --- Error Handler ---
   app.setErrorHandler(errorHandler);
 
