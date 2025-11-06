@@ -7,7 +7,6 @@ import { hashPassword, comparePassword } from "../../shared/utils/password.js";
 import { generateToken } from "../../shared/utils/jwt.js";
 import { AppError } from "../../shared/errors/AppError.js";
 
-
 /**
  * Fetch all users according to their permissions
  * @param {Object} prisma - Prisma client
@@ -298,7 +297,7 @@ export const loginUser = async (prisma, email, password) => {
     user: {
       id: user.id,
       companyId: user.companyId,
-      companyName: user.company.name,
+      companyName: user.company?.name,
       fullName: user.fullName,
       email: user.email,
       role: user.role,

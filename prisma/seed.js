@@ -44,32 +44,32 @@ async function main() {
     // ==========================================
     console.log("👤 Creating users...");
 
-    const hashedPassword = await bcrypt.hash("password123", 10);
+    const hashedPassword = await bcrypt.hash("Password123", 10);
 
     await prisma.user.createMany({
       data: [
         {
           companyId: company1.id,
-          fullName: "أحمد محمد علي",
-          email: "ahmed@alnada.com",
-          passwordHash: hashedPassword,
-          role: "manager",
-          status: "Active",
-        },
-        {
-          companyId: company1.id,
-          fullName: "فاطمة حسن",
-          email: "fatma@alnada.com",
+          fullName: "اكونت تجريبي موظف",
+          email: "employee@alnada.com",
           passwordHash: hashedPassword,
           role: "employee",
           status: "Active",
         },
         {
-          companyId: company2.id,
-          fullName: "محمود السيد",
-          email: "mahmoud@nile-ac.com",
+          companyId: company1.id,
+          fullName: "اكونت تجريبي مدير",
+          email: "manager@alnada.com",
           passwordHash: hashedPassword,
           role: "manager",
+          status: "Active",
+        },
+        {
+          companyId: null,
+          fullName: "اكونت تجريبي ديفيلوبر",
+          email: "developer@dev.com",
+          passwordHash: hashedPassword,
+          role: "developer",
           status: "Active",
         },
       ],
