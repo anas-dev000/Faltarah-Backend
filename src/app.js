@@ -10,6 +10,7 @@ import fastifyCookie from "@fastify/cookie";
 
 // Routes
 import userRoutes from "./modules/users/users.routes.js";
+import companyRoutes from "./modules/companies/companies.routes.js";
 
 export async function buildApp(opts = {}) {
   const app = Fastify({
@@ -29,14 +30,15 @@ export async function buildApp(opts = {}) {
     ...opts,
   });
 
-  // Register Plugins
-  await app.register(prismaPlugin);
   await app.register(corsPlugin);
   await app.register(helmetPlugin);
+
   await app.register(fastifyCookie, {
     secret: config.cookieSecret,
     parseOptions: {},
   });
+
+  await app.register(prismaPlugin);
 
   // Health Check
   app.get("/", async () => {
@@ -45,6 +47,7 @@ export async function buildApp(opts = {}) {
 
   // Register Routes
   await app.register(userRoutes, { prefix: "/api/users" });
+  await app.register(companyRoutes, { prefix: "/api/companies" });
 
   // --- Error Handler ---
   app.setErrorHandler(errorHandler);

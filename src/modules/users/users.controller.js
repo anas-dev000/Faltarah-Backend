@@ -109,13 +109,15 @@ export const login = async (request, reply) => {
     password
   );
 
-  // use cookie to store the token
+  const isProduction = process.env.NODE_ENV === "production";
+
   reply
     .setCookie("token", result.token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
       maxAge: 24 * 60 * 60 * 1000,
+      path: "/",
     })
     .status(200)
     .send({
@@ -129,11 +131,14 @@ export const login = async (request, reply) => {
  * User Logout
  */
 export const logout = async (request, reply) => {
+  const isProduction = process.env.NODE_ENV === "production";
+
   reply
     .clearCookie("token", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      path: "/",
     })
     .status(200)
     .send({
