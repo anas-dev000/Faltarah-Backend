@@ -11,6 +11,8 @@ import fastifyCookie from "@fastify/cookie";
 // Routes
 import userRoutes from "./modules/users/users.routes.js";
 import companyRoutes from "./modules/companies/companies.routes.js";
+import productRoutes from "./modules/products/products.routes.js";
+import accessoryRoutes from "./modules/accessories/accessories.routes.js";
 
 export async function buildApp(opts = {}) {
   const app = Fastify({
@@ -48,6 +50,8 @@ export async function buildApp(opts = {}) {
   // Register Routes
   await app.register(userRoutes, { prefix: "/api/users" });
   await app.register(companyRoutes, { prefix: "/api/companies" });
+  await app.register(productRoutes, { prefix: "/api/products" });
+  await app.register(accessoryRoutes, { prefix: "/api/accessories" });
 
   // --- Error Handler ---
   app.setErrorHandler(errorHandler);

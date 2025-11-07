@@ -100,98 +100,101 @@ async function main() {
 
     console.log(`✅ Created ${2} suppliers`);
 
-    // ==========================================
-    // 4. Create Products
-    // ==========================================
-    console.log("📦 Creating products...");
+// ==========================================
+// 4. Create Products
+// ==========================================
+console.log("📦 Creating products...");
 
-    const product1 = await prisma.product.create({
-      data: {
-        name: "فلتر مياه 7 مراحل",
-        category: "فلاتر المياه",
-        price: 3500.0,
-        stock: 50,
-        supplierId: supplier1.id,
-        companyId: company1.id,
-      },
-    });
+const product1 = await prisma.product.create({
+  data: {
+    name: "فلتر مياه 7 مراحل",
+    category: "فلاتر المياه",
+    price: 3500.0,
+    stock: 50,
+   supplier: { connect: { id: supplier1.id } },
+    company: { connect: { id: company1.id } },
+  },
+});
 
-    const product2 = await prisma.product.create({
-      data: {
-        name: "فلتر مياه 5 مراحل",
-        category: "فلاتر المياه",
-        price: 2500.0,
-        stock: 75,
-        supplierId: supplier1.id,
-        companyId: company1.id,
-      },
-    });
+const product2 = await prisma.product.create({
+  data: {
+    name: "فلتر مياه 5 مراحل",
+    category: "فلاتر المياه",
+    price: 2500.0,
+    stock: 75,
+    supplier: { connect: { id: supplier1.id } },
+    company: { connect: { id: company1.id } },
+  },
+});
 
-    const product3 = await prisma.product.create({
-      data: {
-        name: "تكييف 1.5 حصان",
-        category: "تكييفات",
-        price: 8500.0,
-        stock: 30,
-        supplierId: supplier2.id,
-        companyId: company2.id,
-      },
-    });
+const product3 = await prisma.product.create({
+  data: {
+    name: "تكييف 1.5 حصان",
+    category: "تكييفات",
+    price: 8500.0,
+    stock: 30,
+    supplier: { connect: { id: supplier2.id } },
+    company: { connect: { id: company2.id } },
+  },
+});
 
-    console.log(`✅ Created ${3} products`);
+console.log(`✅ Created ${3} products`);
 
-    // ==========================================
-    // 5. Create Accessories
-    // ==========================================
-    console.log("🔧 Creating accessories...");
+// ==========================================
+// 5. Create Accessories
+// ==========================================
+console.log("🔧 Creating accessories...");
 
-    const accessory1 = await prisma.accessory.create({
-      data: {
-        name: "شمعة فلتر",
-        price: 150.0,
-        stock: 200,
-        supplierId: supplier1.id,
-        companyId: company1.id,
-      },
-    });
+const accessory1 = await prisma.accessory.create({
+  data: {
+    name: "شمعة فلتر",
+    category: "فلاتر المياه", 
+    price: 150.0,
+    stock: 200,
+    supplier: { connect: { id: supplier1.id } },
+    company: { connect: { id: company1.id } },
+  },
+});
 
-    const accessory2 = await prisma.accessory.create({
-      data: {
-        name: "ممبرين فلتر",
-        price: 350.0,
-        stock: 100,
-        supplierId: supplier1.id,
-        companyId: company1.id,
-      },
-    });
+const accessory2 = await prisma.accessory.create({
+  data: {
+    name: "ممبرين فلتر",
+     category: "فلاتر المياه", // ✅ أضف دي
+    price: 350.0,
+    stock: 100,
+    supplier: { connect: { id: supplier1.id } },
+    company: { connect: { id: company1.id } },
+  },
+});
 
-    const accessory3 = await prisma.accessory.create({
-      data: {
-        name: "ريموت تكييف",
-        price: 250.0,
-        stock: 50,
-        supplierId: supplier2.id,
-        companyId: company2.id,
-      },
-    });
+const accessory3 = await prisma.accessory.create({
+  data: {
+    name: "ريموت تكييف",
+    category: "تكييفات", // ✅ أضف دي
+    price: 250.0,
+    stock: 50,
+    supplier: { connect: { id: supplier2.id } },
+    company: { connect: { id: company2.id } },
+  },
+});
 
-    console.log(`✅ Created ${3} accessories`);
+console.log(`✅ Created ${3} accessories`);
 
-    // ==========================================
-    // 6. Create Product-Accessory Relations
-    // ==========================================
-    console.log("🔗 Creating product-accessory relations...");
+// ==========================================
+// 6. Create Product-Accessory Relations
+// ==========================================
+console.log("🔗 Creating product-accessory relations...");
 
-    await prisma.productAccessory.createMany({
-      data: [
-        { productId: product1.id, accessoryId: accessory1.id },
-        { productId: product1.id, accessoryId: accessory2.id },
-        { productId: product2.id, accessoryId: accessory1.id },
-        { productId: product3.id, accessoryId: accessory3.id },
-      ],
-    });
+await prisma.productAccessory.createMany({
+  data: [
+    { productId: product1.id, accessoryId: accessory1.id },
+    { productId: product1.id, accessoryId: accessory2.id },
+    { productId: product2.id, accessoryId: accessory1.id },
+    { productId: product3.id, accessoryId: accessory3.id },
+  ],
+});
 
-    console.log(`✅ Created ${4} product-accessory relations`);
+console.log(`✅ Created ${4} product-accessory relations`);
 
     // ==========================================
     // 7. Create Services
