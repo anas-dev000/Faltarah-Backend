@@ -164,6 +164,7 @@ model Product {
 model Accessory {
   id         Int     @id @default(autoincrement()) @map("accessory_id")
   name       String  @db.VarChar(255)
+  category   String  @db.VarChar(100)
   price      Decimal @db.Decimal(10, 2)
   stock      Int     @default(0)
   supplierId Int     @map("supplier_id")
