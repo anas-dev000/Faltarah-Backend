@@ -240,7 +240,7 @@ export const updateAccessoryStock = async (
 export const deleteAccessory = async (prisma, id, currentUser) => {
   const { role, companyId } = currentUser;
 
-  // Only developer or manager can delete
+  // ✅ FIXED: Both Manager and Developer can delete (not just Developer)
   if (role === "employee") {
     throw new AppError("Employees cannot delete accessories", 403);
   }
@@ -248,8 +248,13 @@ export const deleteAccessory = async (prisma, id, currentUser) => {
   // Check if accessory exists
   const existing = await getAccessoryById(prisma, id, currentUser);
 
-  // Manager can only delete accessories in their company
+  // ✅ FIXED: Manager can delete accessories in their company
   if (role === "manager" && existing.companyId !== companyId) {
+    throw new AppError("You can only delete accessories in your company", 403);
+  }
+
+  // ✅ FIXED: Developer can delete accessories in their company (if needed)
+  if (role === "developer" && existing.companyId !== companyId) {
     throw new AppError("You can only delete accessories in your company", 403);
   }
 

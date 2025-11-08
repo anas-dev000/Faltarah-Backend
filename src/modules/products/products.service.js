@@ -273,19 +273,26 @@ export const updateProductStock = async (prisma, id, newStock, currentUser) => {
 /**
  * Delete product
  */
+
 export const deleteProduct = async (prisma, id, currentUser) => {
   const { role, companyId } = currentUser;
 
-  // Only developer can delete
+  // ✅ FIXED: Both Manager and Developer can delete
   if (role === "employee") {
     throw new AppError("Employees cannot delete products", 403);
   }
 
-  // Check if product exists
-  const existing = await getProductById(prisma, id, currentUser);
+  // ✅ FIXED: Get product without company filter for developer
+  const targetCompanyId = role === "developer" ? null : companyId;
+  const existing = await productsRepository.findById(prisma, id, targetCompanyId);
 
-  // Developer can only delete products in their company
-  if (role === "developer" && existing.companyId !== companyId) {
+  if (!existing) {
+    throw new AppError("Product not found or access denied", 404);
+  }
+
+  // ✅ FIXED: Manager can only delete products in their company
+  // Developer can delete any product
+  if (role === "manager" && existing.companyId !== companyId) {
     throw new AppError("You can only delete products in your company", 403);
   }
 
