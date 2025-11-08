@@ -13,6 +13,7 @@ import userRoutes from "./modules/users/users.routes.js";
 import companyRoutes from "./modules/companies/companies.routes.js";
 import productRoutes from "./modules/products/products.routes.js";
 import accessoryRoutes from "./modules/accessories/accessories.routes.js";
+import suppliersRoutes from "./modules/suppliers/suppliers.routes.js";
 
 export async function buildApp(opts = {}) {
   const app = Fastify({
@@ -52,6 +53,7 @@ export async function buildApp(opts = {}) {
   await app.register(companyRoutes, { prefix: "/api/companies" });
   await app.register(productRoutes, { prefix: "/api/products" });
   await app.register(accessoryRoutes, { prefix: "/api/accessories" });
+  await app.register(suppliersRoutes, { prefix: "/api/suppliers" });
 
   // --- Error Handler ---
   app.setErrorHandler(errorHandler);
