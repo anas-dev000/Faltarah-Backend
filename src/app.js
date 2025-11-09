@@ -14,6 +14,7 @@ import companyRoutes from "./modules/companies/companies.routes.js";
 import productRoutes from "./modules/products/products.routes.js";
 import accessoryRoutes from "./modules/accessories/accessories.routes.js";
 import suppliersRoutes from "./modules/suppliers/suppliers.routes.js";
+import maintenanceRoutes from "./modules/maintenances/maintenances.routes.js";
 import invoicesRoutes from './modules/invoices/invoices.routes.js';
 
 export async function buildApp(opts = {}) {
@@ -55,6 +56,7 @@ export async function buildApp(opts = {}) {
   await app.register(productRoutes, { prefix: "/api/products" });
   await app.register(accessoryRoutes, { prefix: "/api/accessories" });
   await app.register(suppliersRoutes, { prefix: "/api/suppliers" });
+  await app.register(maintenanceRoutes, { prefix: "/api/maintenances" });
   await app.register(invoicesRoutes, { prefix: "/api/invoices" });
 
   // --- Error Handler ---
