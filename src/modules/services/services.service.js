@@ -1,10 +1,13 @@
 import * as serviceRepo from "./services.repository.js";
 import { AppError } from "../../shared/errors/AppError.js";
 
-export const getAllServices = async (prisma, currentUser) => {
+export const getAllServices = async (prisma, currentUser, page = 1, limit = 10) => {
   const { role, companyId } = currentUser;
-  if (role === "developer") return serviceRepo.findAllServices(prisma);
-  return serviceRepo.findAllServices(prisma, companyId);
+  const skip = (page - 1) * limit;
+  const take = limit;
+
+  if (role === "developer") return serviceRepo.findAllServices(prisma, null, skip, take);
+  return serviceRepo.findAllServices(prisma, companyId, skip, take);
 };
 
 export const getServiceById = async (prisma, id, currentUser) => {
