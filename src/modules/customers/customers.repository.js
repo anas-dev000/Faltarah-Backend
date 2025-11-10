@@ -3,14 +3,19 @@
 // ==========================================
 
 /**
- * Fetch all customers with filtering by company
+ * Fetch all customers with filtering by company + pagination
  * @param {Object} prisma - Prisma client
  * @param {Number|null} companyId - Company ID (null for developers)
+ * @param {Number} page - Current page number
+ * @param {Number} limit - Number of records per page
  */
-export const findAllCustomers = async (prisma, companyId = null) => {
+export const findAllCustomers = async (prisma, companyId = null, page = 1, limit = 10) => {
   const whereClause = companyId ? { companyId } : {};
 
-  return prisma.customer.findMany({
+  const skip = (page - 1) * limit;
+
+  // Get paginated customers
+  const customers = await prisma.customer.findMany({
     where: whereClause,
     select: {
       id: true,
@@ -32,10 +37,26 @@ export const findAllCustomers = async (prisma, companyId = null) => {
         },
       },
     },
+    skip,
+    take: limit,
     orderBy: {
       createdAt: "desc",
     },
   });
+
+  // Get total count for pagination
+  const total = await prisma.customer.count({
+    where: whereClause,
+  });
+
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    data: customers,
+    total,
+    totalPages,
+    page,
+  };
 };
 
 /**
@@ -78,6 +99,22 @@ export const findCustomerById = async (prisma, id, companyId = null) => {
 };
 
 /**
+ * Get distinct governorates for a company
+ * @param {Object} prisma - Prisma client
+ * @param {Number|null} companyId - Company ID (null for developers)
+ */
+export const findAllTypes = async (prisma, companyId = null) => {
+  const whereClause = companyId ? { companyId } : {};
+
+  return prisma.customer.findMany({
+    where: whereClause,
+    distinct: ["customerType"],
+    select: { customerType: true },
+  });
+};
+
+
+/**
  * Fetch customers by type (Installation / Maintenance)
  * @param {Object} prisma - Prisma client
  * @param {String} customerType - Customer type
@@ -117,6 +154,22 @@ export const findAllGovernorates = async (prisma, companyId = null) => {
     select: { governorate: true },
   });
 };
+
+/**
+ * Get distinct governorates for a company
+ * @param {Object} prisma - Prisma client
+ * @param {Number|null} companyId - Company ID (null for developers)
+ */
+export const findAllCities = async (prisma, companyId = null) => {
+  const whereClause = companyId ? { companyId } : {};
+
+  return prisma.customer.findMany({
+    where: whereClause,
+    distinct: ["city"],
+    select: { city: true },
+  });
+};
+
 
 /**
  * Get distinct cities for a specific governorate
@@ -168,6 +221,7 @@ export const createCustomer = async (prisma, data) => {
       district: true,
       createdAt: true,
       idCardImage:true,
+      idCardImagePublicId: true,
       company: {
         select: {
           id: true,
