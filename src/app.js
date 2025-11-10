@@ -17,8 +17,11 @@ import accessoryRoutes from "./modules/accessories/accessories.routes.js";
 import suppliersRoutes from "./modules/suppliers/suppliers.routes.js";
 import maintenanceRoutes from "./modules/maintenances/maintenances.routes.js";
 import invoicesRoutes from "./modules/invoices/invoices.routes.js";
+import installmentsRoutes from "./modules/installments/installments.routes.js";
 import customerRoutes from "./modules/customers/customers.routes.js";
 import employeeRoutes from "./modules/employees/employees.routes.js";
+
+
 export async function buildApp(opts = {}) {
   const app = Fastify({
     logger: {
@@ -66,8 +69,9 @@ export async function buildApp(opts = {}) {
   await app.register(suppliersRoutes, { prefix: "/api/suppliers" });
   await app.register(maintenanceRoutes, { prefix: "/api/maintenances" });
   await app.register(invoicesRoutes, { prefix: "/api/invoices" });
-  await app.register(customerRoutes,{prefix:"/api/customers"})
-  await app.register(employeeRoutes,{prefix:"/api/employees"})
+  await app.register(installmentsRoutes, { prefix: "/api/installments" });
+  await app.register(customerRoutes, { prefix: "/api/customers" });
+  await app.register(employeeRoutes, { prefix: "/api/employees" });
   // --- Error Handler ---
   app.setErrorHandler(errorHandler);
 
