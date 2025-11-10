@@ -1,21 +1,30 @@
-export const findAllServices = async (prisma, companyId = null) => {
+export const findAllServices = async (prisma, companyId = null, skip = 0, take = 10) => {
   const whereClause = companyId ? { companyId } : {};
-  return prisma.service.findMany({
-    where: whereClause,
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      price: true,
-      companyId: true,
-      _count: {
-        select: {
-          maintenances: true,
-          invoiceItems: true,
+
+  const [services, total] = await Promise.all([
+    prisma.service.findMany({
+      where: whereClause,
+      skip,
+      take,
+      orderBy: { id: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        price: true,
+        companyId: true,
+        _count: {
+          select: {
+            maintenances: true,
+            invoiceItems: true,
+          },
         },
       },
-    }
-  });
+    }),
+    prisma.service.count({ where: whereClause }),
+  ]);
+
+  return { services, total };
 };
 
 export const findServiceById = async (prisma, id, restrictToCompanyId = null) => {

@@ -1,8 +1,34 @@
 import * as serviceService from "./services.service.js";
 
 export const getAll = async (request, reply) => {
-  const services = await serviceService.getAllServices(request.server.prisma, request.user);
-  return reply.send({ success: true, data: services, count: services.length });
+  try {
+    const { page = 1, limit = 10 } = request.query;
+    const pageNumber = parseInt(page);
+    const itemsPerPage = parseInt(limit);
+
+    const { services, total } = await serviceService.getAllServices(
+      request.server.prisma,
+      request.user,
+      pageNumber,
+      itemsPerPage
+    );
+
+    const totalPages = Math.ceil(total / itemsPerPage);
+
+    return reply.send({
+      success: true,
+      data: services,
+      total,
+      page: pageNumber,
+      totalPages,
+    });
+  } catch (error) {
+    console.error("Error fetching services:", error);
+    return reply.status(500).send({
+      success: false,
+      message: "حدث خطأ أثناء جلب الخدمات",
+    });
+  }
 };
 
 export const getById = async (request, reply) => {
