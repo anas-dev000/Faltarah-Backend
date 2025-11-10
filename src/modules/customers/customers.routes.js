@@ -44,7 +44,11 @@ export default async function customerRoutes(fastify) {
     preHandler: [authenticate],
     handler: customerController.getById,
   });
-
+  // Get all types of customers 
+  fastify.get('/allTypes',{
+    preHandler:[authenticate],
+    handler:customerController.getAllTypes
+  })
   // Get customers by type (Installation / Maintenance)
   fastify.get("/type/:customerType", {
     preHandler: [authenticate],
@@ -56,7 +60,11 @@ export default async function customerRoutes(fastify) {
     preHandler: [authenticate],
     handler: customerController.getGovernorates,
   });
-
+  // Get all cities 
+  fastify.get("/cities",{
+    preHandler: [authenticate],
+    handler:customerController.getCities
+  })
   // Get cities by governorate
   fastify.get("/cities/:governorate", {
     preHandler: [authenticate],
@@ -74,6 +82,7 @@ export default async function customerRoutes(fastify) {
     preHandler: [
       authenticate,
       authorize(["manager", "developer"]),
+      
     ],
     handler: customerController.create,
   });
@@ -83,14 +92,14 @@ export default async function customerRoutes(fastify) {
     preHandler: [
       authenticate,
       authorize(["manager", "developer"]),
-      validateBody(updateCustomerSchema),
+      // validateBody(updateCustomerSchema),
     ],
     handler: customerController.update,
   });
 
   // Delete customer (Developer only)
   fastify.delete("/:id", {
-    preHandler: [authenticate, authorize(["developer"])],
+    preHandler: [authenticate, authorize(["developer","manager"])],
     handler: customerController.deleteById,
   });
 }

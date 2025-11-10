@@ -6,22 +6,24 @@ import * as customerRepo from "./customers.repository.js";
 import { AppError } from "../../shared/errors/AppError.js";
 
 /**
- * Fetch all customers according to user permissions
+ * Fetch all customers according to user permissions with pagination
  * @param {Object} prisma - Prisma client
  * @param {Object} currentUser - Current token user
+ * @param {Number} page - Page number
+ * @param {Number} limit - Records per page
  */
-export const getAllCustomers = async (prisma, currentUser) => {
+export const getAllCustomers = async (prisma, currentUser, page = 1, limit = 10) => {
   const { role, companyId } = currentUser;
 
-  if (role === "developer") {
-    return customerRepo.findAllCustomers(prisma, null);
+  // Validate role
+  if (!["developer", "manager", "employee"].includes(role)) {
+    throw new AppError("Forbidden: Invalid role access", 403);
   }
 
-  if (role === "manager" || role === "employee") {
-    return customerRepo.findAllCustomers(prisma, companyId);
-  }
+  // developer sees all companies, others see their own
+  const targetCompanyId = role === "developer" ? null : companyId;
 
-  throw new AppError("Forbidden: Invalid role access", 403);
+  return customerRepo.findAllCustomers(prisma, targetCompanyId, page, limit);
 };
 
 /**
@@ -45,6 +47,21 @@ export const getCustomerById = async (prisma, id, currentUser) => {
 
   return customer;
 };
+
+/**
+ * Fetch all governorates (distinct)
+ * @param {Object} prisma - Prisma client
+ * @param {Object} currentUser - Current token user
+ */
+export const getAllTypes = async (prisma, currentUser) => {
+  const { role, companyId } = currentUser;
+
+  return customerRepo.findAllTypes(
+    prisma,
+    role === "developer" ? null : companyId
+  );
+};
+
 
 /**
  * Fetch customers by type (Installation / Maintenance)
@@ -75,6 +92,19 @@ export const getAllGovernorates = async (prisma, currentUser) => {
   const { role, companyId } = currentUser;
 
   return customerRepo.findAllGovernorates(
+    prisma,
+    role === "developer" ? null : companyId
+  );
+};
+/**
+ * Fetch all Cities (distinct)
+ * @param {Object} prisma - Prisma client
+ * @param {Object} currentUser - Current token user
+ */
+export const getAllCities = async (prisma, currentUser) => {
+  const { role, companyId } = currentUser;
+
+  return customerRepo.findAllCities(
     prisma,
     role === "developer" ? null : companyId
   );
@@ -117,122 +147,141 @@ export const countCustomers = async (prisma, currentUser) => {
 
 /**
  * Create a new customer
- * @param {Object} prisma - Prisma client
+ * @param {Object} prisma - Prisma client instance
  * @param {Object} data - Customer data
- * @param {Object} currentUser - Current token user
+ * @param {Object} currentUser - Current authenticated user
+ * @returns {Promise<Object>} - Created customer
  */
 export const createNewCustomer = async (prisma, data, currentUser) => {
-  const { role, companyId } = currentUser;
-  console.log(role,companyId,data.companyId);
-
-  if (role === "employee") {
-    throw new AppError("Forbidden: Employees cannot create customers", 403);
+  // Validate required fields
+  if (!data.fullName || !data.nationalId || !data.primaryNumber) {
+    throw new Error("Missing required fields: fullName, nationalId, or primaryNumber");
   }
 
-  let targetCompanyId = data.companyId;
-  
-  // Manager can only create customers in their own company
-  if (role === "manager") {
-    if (data.companyId != companyId) {
-      throw new AppError(
-        "Forbidden: You can only create customers for your company",
-        403
-      );
-    }
-    targetCompanyId = companyId;
-  }
-
-  // Verify company existence
-  const companyExists = await prisma.company.findUnique({
-    where: { id: targetCompanyId },
-  });
-
-  if (!companyExists) {
-    throw new AppError("Company not found", 404);
-  }
-
-  // Check nationalId uniqueness inside company
+  // Check if customer already exists
   const existingCustomer = await prisma.customer.findFirst({
-    where: { nationalId: data.nationalId, companyId: targetCompanyId },
+    where: {
+      nationalId: data.nationalId,
+      companyId: currentUser.companyId,
+    },
   });
 
   if (existingCustomer) {
-    throw new AppError("Customer with this National ID already exists", 409);
+    throw new Error("Customer with this National ID already exists");
   }
 
+  // Prepare customer data
   const customerData = {
-    companyId: targetCompanyId,
+    companyId: currentUser.companyId,
     fullName: data.fullName,
     nationalId: data.nationalId,
-    customerType: data.customerType,
-    idCardImage: data.idCardImage || null,
+    customerType: data.customerType || "Maintenance",
     primaryNumber: data.primaryNumber,
     secondaryNumber: data.secondaryNumber || null,
-    governorate: data.governorate,
-    city: data.city,
-    district: data.district,
+    governorate: data.governorate || null,
+    city: data.city || null,
+    district: data.district || null,
+    // ✅ Include image URL and public_id
+    idCardImage: data.idCardImage || null,
+    idCardImagePublicId: data.idCardImagePublicId || null,
   };
 
-  return customerRepo.createCustomer(prisma, customerData);
+  // Create customer
+  const customer = await prisma.customer.create({
+    data: customerData,
+    include: {
+      company: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  return customer;
+};
+
+export default {
+  createNewCustomer,
+  // ... other customer service methods
 };
 
 /**
- * Update a customer's data
- * @param {Object} prisma - Prisma client
+ * Update an existing customer
+ * @param {Object} prisma - Prisma client instance
  * @param {Number} id - Customer ID
- * @param {Object} data - Fields to update
- * @param {Object} currentUser - Current token user
+ * @param {Object} data - Update data
+ * @param {Object} currentUser - Current authenticated user
+ * @returns {Promise<Object>} - Updated customer
  */
-export const updateExistingCustomer = async (
-  prisma,
-  id,
-  data,
-  currentUser
-) => {
-  const { role, companyId } = currentUser;
-
-  const customer = await customerRepo.findCustomerById(
-    prisma,
-    id,
-    role === "developer" ? null : companyId
-  );
+export const updateExistingCustomer = async (prisma, id, data, currentUser) => {
+  // Verify customer exists and belongs to user's company
+  const customer = await prisma.customer.findFirst({
+    where: {
+      id: id,
+      companyId: currentUser.companyId,
+    },
+  });
 
   if (!customer) {
-    throw new AppError("Customer not found or access denied", 404);
+    throw new Error("Customer not found or access denied");
   }
 
-  if (role === "employee") {
-    throw new AppError("Forbidden: Employees cannot update customers", 403);
+  // Prepare update data (only include provided fields)
+  const updateData = {};
+
+  // Basic fields
+  if (data.fullName !== undefined) updateData.fullName = data.fullName;
+  if (data.nationalId !== undefined) updateData.nationalId = data.nationalId;
+  if (data.customerType !== undefined) updateData.customerType = data.customerType;
+  if (data.primaryNumber !== undefined) updateData.primaryNumber = data.primaryNumber;
+  if (data.secondaryNumber !== undefined) updateData.secondaryNumber = data.secondaryNumber;
+  
+  // Address fields
+  if (data.governorate !== undefined) updateData.governorate = data.governorate;
+  if (data.city !== undefined) updateData.city = data.city;
+  if (data.district !== undefined) updateData.district = data.district;
+  
+  // ✅ Image fields (URL and public_id)
+  if (data.idCardImage !== undefined) updateData.idCardImage = data.idCardImage;
+  if (data.idCardImagePublicId !== undefined) updateData.idCardImagePublicId = data.idCardImagePublicId;
+
+  // Check if there's anything to update
+  if (Object.keys(updateData).length === 0) {
+    throw new Error("No fields to update");
   }
 
-  // Manager cannot update other companies' customers
-  if (role === "manager" && customer.companyId !== companyId) {
-    throw new AppError(
-      "Forbidden: You can only update customers from your company",
-      403
-    );
-  }
-
-  // Check if nationalId already exists for another customer
+  // If updating nationalId, check for duplicates
   if (data.nationalId && data.nationalId !== customer.nationalId) {
-    const exists = await prisma.customer.findFirst({
+    const existingCustomer = await prisma.customer.findFirst({
       where: {
         nationalId: data.nationalId,
-        companyId: customer.companyId,
+        companyId: currentUser.companyId,
         id: { not: id },
       },
     });
-    if (exists) {
-      throw new AppError("National ID already used by another customer", 409);
+
+    if (existingCustomer) {
+      throw new Error("Customer with this National ID already exists");
     }
   }
 
-  return customerRepo.updateCustomer(
-    prisma,
-    id,
-    data,
-    role === "developer" ? null : companyId
-  );
+  // Update customer
+  const updatedCustomer = await prisma.customer.update({
+    where: { id: id },
+    data: updateData,
+    include: {
+      company: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  return updatedCustomer;
 };
 
 /**
