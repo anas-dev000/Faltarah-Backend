@@ -24,17 +24,16 @@ model Company {
   createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
 
   // Relations
-  users                       User[]
-  customers                   Customer[]
-  employees                   Employee[]
-  suppliers                   Supplier[]
-  products                    Product[]
-  accessories                 Accessory[]
-  services                    Service[]
-  maintenances                Maintenance[]
-  invoices                    Invoice[]
-  invoiceItems                InvoiceItem[]
-  customerMaintenanceStatuses CustomerMaintenanceStatus[]
+  users              User[]
+  customers          Customer[]
+  employees          Employee[]
+  suppliers          Supplier[]
+  products           Product[]
+  accessories        Accessory[]
+  services           Service[]
+  maintenances       Maintenance[]
+  invoices           Invoice[]
+  invoiceItems       InvoiceItem[]
 
   @@map("companies")
 }
@@ -54,51 +53,10 @@ model User {
 
   // Relations
   company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  passwordResets PasswordReset[]
 
   @@index([companyId])
   @@map("users")
 }
-
-model PendingUser {
-  id             Int       @id @default(autoincrement()) @map("pending_user_id")
-  email          String    @unique @db.VarChar(255)
-  fullName       String    @map("full_name") @db.VarChar(255)
-  passwordHash   String    @map("password_hash") @db.VarChar(255)
-  companyName    String    @map("company_name") @db.VarChar(255)
-  companyPhone   String?   @map("company_phone") @db.VarChar(15)
-  companyAddress String?   @map("company_address") @db.Text
-  companyEmail   String    @map("company_email") @db.VarChar(255)
-  otp            String    @db.VarChar(6)
-  otpExpiry      DateTime  @map("otp_expiry") @db.Timestamp(6)
-  isVerified     Boolean   @default(false) @map("is_verified")
-  verifiedAt     DateTime? @map("verified_at") @db.Timestamp(6)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-
-  @@index([email])
-  @@index([otp])
-  @@index([otpExpiry])
-  @@map("pending_users")
-}
-
-
-model PasswordReset {
-  id        Int       @id @default(autoincrement()) @map("reset_id")
-  userId    Int       @map("user_id")
-  token     String    @unique @db.VarChar(255)
-  expiry    DateTime  @db.Timestamp(6)
-  isUsed    Boolean   @default(false) @map("is_used")
-  usedAt    DateTime? @map("used_at") @db.Timestamp(6)
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([token])
-  @@index([expiry])
-  @@map("password_resets")
-}
-
 // =====================================================
 // Customer Entity
 // =====================================================
@@ -108,6 +66,7 @@ model Customer {
   customerType    String   @map("customer_type") @db.VarChar(50) // 'Installation', 'Maintenance'
   nationalId      String   @map("national_id") @db.Char(14)
   idCardImage     String?  @map("id_card_image") @db.VarChar(500)
+  idCardImagePublicId String?  @map("id_card_image_public_id") @db.VarChar(255)
   primaryNumber   String   @map("primary_number") @db.VarChar(15)
   secondaryNumber String?  @map("secondary_number") @db.VarChar(15)
   governorate     String   @db.VarChar(100)
@@ -117,11 +76,10 @@ model Customer {
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
   // Relations
-  company             Company                     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  invoices            Invoice[]
-  maintenances        Maintenance[]
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoices     Invoice[]
+  maintenances Maintenance[]
   installmentPayments InstallmentPayment[]
-  maintenanceStatuses CustomerMaintenanceStatus[]
 
   @@index([companyId])
   @@index([nationalId])
@@ -136,6 +94,7 @@ model Employee {
   fullName        String   @map("full_name") @db.VarChar(255)
   nationalId      String   @map("national_id") @db.Char(14)
   idCardImage     String?  @map("id_card_image") @db.VarChar(500)
+  idCardImagePublicId String? @map("id_card_image_public_id") @db.VarChar(255)
   role            String   @db.VarChar(50) // 'SalesRep', 'Technician'
   primaryNumber   String   @map("primary_number") @db.VarChar(15)
   secondaryNumber String?  @map("secondary_number") @db.VarChar(15)
@@ -188,8 +147,8 @@ model Product {
   companyId  Int     @map("company_id")
 
   // Relations
-  company            Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  supplier           Supplier           @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  company            Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  supplier           Supplier             @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   productAccessories ProductAccessory[]
   maintenances       Maintenance[]
   invoiceItems       InvoiceItem[]
@@ -213,8 +172,8 @@ model Accessory {
   companyId  Int     @map("company_id")
 
   // Relations
-  company            Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  supplier           Supplier           @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  company            Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  supplier           Supplier             @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   productAccessories ProductAccessory[]
   invoiceItems       InvoiceItem[]
 
@@ -264,31 +223,31 @@ model Service {
 // Invoice Entity
 // =====================================================
 model Invoice {
-  id                    Int       @id @default(autoincrement()) @map("invoice_id")
-  customerId            Int       @map("customer_id")
-  salesRepId            Int       @map("sales_rep_id")
-  technicianId          Int?      @map("technician_id")
-  companyId             Int       @map("company_id")
-  totalAmount           Decimal   @default(0) @map("total_amount") @db.Decimal(10, 2)
-  discountAmount        Decimal   @default(0) @map("discount_amount") @db.Decimal(10, 2)
-  saleType              String    @map("sale_type") @db.VarChar(20) // 'Cash', 'Installment'
-  maintenancePeriod     Int?      @map("maintenance_period") // Months
-  paidAtContract        Decimal   @default(0) @map("paid_at_contract") @db.Decimal(10, 2)
-  paidAtInstallation    Decimal   @default(0) @map("paid_at_installation") @db.Decimal(10, 2)
-  installationCostType  String    @default("Percentage") @map("installation_cost_type") @db.VarChar(20) // 'Percentage', 'Fixed'
-  installationCostValue Decimal   @default(0) @map("installation_cost_value") @db.Decimal(10, 2)
-  contractDate          DateTime  @map("contract_date") @db.Timestamp(6)
-  installationDate      DateTime? @map("installation_date") @db.Timestamp(6)
-  contractNotes         String?   @map("contract_notes") @db.Text
-  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  id                     Int      @id @default(autoincrement()) @map("invoice_id")
+  customerId             Int      @map("customer_id")
+  salesRepId             Int      @map("sales_rep_id")
+  technicianId           Int?     @map("technician_id")
+  companyId              Int      @map("company_id")
+  totalAmount            Decimal  @default(0) @map("total_amount") @db.Decimal(10, 2)
+  discountAmount         Decimal  @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  saleType               String   @map("sale_type") @db.VarChar(20) // 'Cash', 'Installment'
+  maintenancePeriod      Int?     @map("maintenance_period") // Months
+  paidAtContract         Decimal  @default(0) @map("paid_at_contract") @db.Decimal(10, 2)
+  paidAtInstallation     Decimal  @default(0) @map("paid_at_installation") @db.Decimal(10, 2)
+  installationCostType   String   @default("Percentage") @map("installation_cost_type") @db.VarChar(20) // 'Percentage', 'Fixed'
+  installationCostValue  Decimal  @default(0) @map("installation_cost_value") @db.Decimal(10, 2)
+  contractDate           DateTime @map("contract_date") @db.Timestamp(6)
+  installationDate       DateTime? @map("installation_date") @db.Timestamp(6)
+  contractNotes          String?  @map("contract_notes") @db.Text
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
   // Relations
-  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  customer     Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  salesRep     Employee      @relation("SalesRepInvoices", fields: [salesRepId], references: [id], onDelete: Restrict)
-  technician   Employee?     @relation("TechnicianInvoices", fields: [technicianId], references: [id], onDelete: Restrict)
+  company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer    Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  salesRep    Employee      @relation("SalesRepInvoices", fields: [salesRepId], references: [id], onDelete: Restrict)
+  technician  Employee?     @relation("TechnicianInvoices", fields: [technicianId], references: [id], onDelete: Restrict)
   invoiceItems InvoiceItem[]
-  installment  Installment?
+  installment Installment?
 
   @@index([companyId])
   @@index([customerId])
@@ -388,12 +347,9 @@ model Maintenance {
   companyId       Int      @map("company_id")
   maintenanceDate DateTime @map("maintenance_date") @db.Timestamp(6)
   price           Decimal  @db.Decimal(10, 2)
-
-  // Updated: Changed from VarChar(20) to support: Pending, Completed, Cancelled, Overdue
-  status String @default("Pending") @db.VarChar(20)
-
-  notes     String?  @db.Text
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  status          String   @db.VarChar(20) // 'Pending', 'Completed'
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
   // Relations
   company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -408,27 +364,4 @@ model Maintenance {
   @@index([status])
   @@index([maintenanceDate])
   @@map("maintenances")
-}
-
-// =====================================================
-// CustomerMaintenanceStatus for tracking
-// =====================================================
-model CustomerMaintenanceStatus {
-  id              Int      @id @default(autoincrement()) @map("status_id")
-  customerId      Int      @map("customer_id")
-  companyId       Int      @map("company_id")
-  status          String   @default("Active") @db.VarChar(20) // 'Active', 'Inactive'
-  inactiveReason  String?  @map("inactive_reason") @db.Text
-  notes           String?  @db.Text
-  statusChangedAt DateTime @default(now()) @map("status_changed_at") @db.Timestamp(6)
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-
-  // Relations
-  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-
-  @@index([companyId])
-  @@index([customerId])
-  @@index([status])
-  @@map("customer_maintenance_statuses")
 }
