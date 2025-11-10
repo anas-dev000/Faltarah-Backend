@@ -15,7 +15,7 @@ CREATE TABLE "companies" (
 -- CreateTable
 CREATE TABLE "users" (
     "user_id" SERIAL NOT NULL,
-    "company_id" INTEGER NOT NULL,
+    "company_id" INTEGER,
     "full_name" VARCHAR(255) NOT NULL,
     "email" VARCHAR(255) NOT NULL,
     "password_hash" VARCHAR(255) NOT NULL,
@@ -33,6 +33,7 @@ CREATE TABLE "customers" (
     "customer_type" VARCHAR(50) NOT NULL,
     "national_id" CHAR(14) NOT NULL,
     "id_card_image" VARCHAR(500),
+    "id_card_image_public_id" VARCHAR(255),
     "primary_number" VARCHAR(15) NOT NULL,
     "secondary_number" VARCHAR(15),
     "governorate" VARCHAR(100) NOT NULL,
@@ -50,6 +51,7 @@ CREATE TABLE "employees" (
     "full_name" VARCHAR(255) NOT NULL,
     "national_id" CHAR(14) NOT NULL,
     "id_card_image" VARCHAR(500),
+    "id_card_image_public_id" VARCHAR(255),
     "role" VARCHAR(50) NOT NULL,
     "primary_number" VARCHAR(15) NOT NULL,
     "secondary_number" VARCHAR(15),
@@ -90,6 +92,7 @@ CREATE TABLE "products" (
 CREATE TABLE "accessories" (
     "accessory_id" SERIAL NOT NULL,
     "name" VARCHAR(255) NOT NULL,
+    "category" VARCHAR(100) NOT NULL,
     "price" DECIMAL(10,2) NOT NULL,
     "stock" INTEGER NOT NULL DEFAULT 0,
     "supplier_id" INTEGER NOT NULL,

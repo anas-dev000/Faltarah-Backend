@@ -57,7 +57,6 @@ model User {
   @@index([companyId])
   @@map("users")
 }
-
 // =====================================================
 // Customer Entity
 // =====================================================
@@ -67,6 +66,7 @@ model Customer {
   customerType    String   @map("customer_type") @db.VarChar(50) // 'Installation', 'Maintenance'
   nationalId      String   @map("national_id") @db.Char(14)
   idCardImage     String?  @map("id_card_image") @db.VarChar(500)
+  idCardImagePublicId String?  @map("id_card_image_public_id") @db.VarChar(255)
   primaryNumber   String   @map("primary_number") @db.VarChar(15)
   secondaryNumber String?  @map("secondary_number") @db.VarChar(15)
   governorate     String   @db.VarChar(100)
@@ -94,6 +94,7 @@ model Employee {
   fullName        String   @map("full_name") @db.VarChar(255)
   nationalId      String   @map("national_id") @db.Char(14)
   idCardImage     String?  @map("id_card_image") @db.VarChar(500)
+  idCardImagePublicId String? @map("id_card_image_public_id") @db.VarChar(255)
   role            String   @db.VarChar(50) // 'SalesRep', 'Technician'
   primaryNumber   String   @map("primary_number") @db.VarChar(15)
   secondaryNumber String?  @map("secondary_number") @db.VarChar(15)
