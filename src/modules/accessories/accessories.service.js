@@ -128,7 +128,7 @@ export const createAccessory = async (prisma, data, currentUser) => {
   // Create accessory
   const accessoryData = {
     name: data.name,
-    category: data.category || null,
+    // category: data.category || null,
     price: Number(data.price),
     stock: data.stock !== undefined ? Number(data.stock) : 0,
     supplierId: Number(data.supplierId),
@@ -189,7 +189,7 @@ export const updateAccessory = async (prisma, id, data, currentUser) => {
   // Update accessory
   const updateData = {
     ...(data.name && { name: data.name }),
-    ...(data.category !== undefined && { category: data.category }),
+    // ...(data.category !== undefined && { category: data.category }),
     ...(data.price !== undefined && { price: Number(data.price) }),
     ...(data.stock !== undefined && { stock: Number(data.stock) }),
     ...(data.supplierId && { supplierId: Number(data.supplierId) }),

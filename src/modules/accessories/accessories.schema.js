@@ -17,22 +17,22 @@ export const createAccessorySchema = {
       return true;
     },
   },
-  category: {
-    type: "string",
-    required: false,
-    validate: (value) => {
-      if (
-        value !== undefined &&
-        value !== null &&
-        (typeof value !== "string" ||
-          value.trim().length < 2 ||
-          value.length > 100)
-      ) {
-        throw new Error("Category must be between 2 and 100 characters");
-      }
-      return true;
-    },
-  },
+  // category: {
+  //   type: "string",
+  //   required: false,
+  //   validate: (value) => {
+  //     if (
+  //       value !== undefined &&
+  //       value !== null &&
+  //       (typeof value !== "string" ||
+  //         value.trim().length < 2 ||
+  //         value.length > 100)
+  //     ) {
+  //       throw new Error("Category must be between 2 and 100 characters");
+  //     }
+  //     return true;
+  //   },
+  // },
   price: {
     type: "number",
     required: true,
@@ -93,22 +93,22 @@ export const updateAccessorySchema = {
       return true;
     },
   },
-  category: {
-    type: "string",
-    required: false,
-    validate: (value) => {
-      if (
-        value !== undefined &&
-        value !== null &&
-        (typeof value !== "string" ||
-          value.trim().length < 2 ||
-          value.length > 100)
-      ) {
-        throw new Error("Category must be between 2 and 100 characters");
-      }
-      return true;
-    },
-  },
+  // category: {
+  //   type: "string",
+  //   required: false,
+  //   validate: (value) => {
+  //     if (
+  //       value !== undefined &&
+  //       value !== null &&
+  //       (typeof value !== "string" ||
+  //         value.trim().length < 2 ||
+  //         value.length > 100)
+  //     ) {
+  //       throw new Error("Category must be between 2 and 100 characters");
+  //     }
+  //     return true;
+  //   },
+  // },
   price: {
     type: "number",
     required: false,

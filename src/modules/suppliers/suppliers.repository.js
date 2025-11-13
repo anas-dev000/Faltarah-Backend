@@ -121,7 +121,7 @@ export async function findById(prisma, id, companyId = null) {
         select: {
           id: true,
           name: true,
-          category: true,
+          // category: true,
           price: true,
           stock: true,
         },

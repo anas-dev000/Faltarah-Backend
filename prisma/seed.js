@@ -148,7 +148,6 @@ async function main() {
     const accessory1 = await prisma.accessory.create({
       data: {
         name: "شمعة فلتر",
-        category: "فلاتر المياه",
         price: 150.0,
         stock: 200,
         supplier: { connect: { id: supplier1.id } },
@@ -159,7 +158,6 @@ async function main() {
     const accessory2 = await prisma.accessory.create({
       data: {
         name: "ممبرين فلتر",
-        category: "فلاتر المياه", // ✅ أضف دي
         price: 350.0,
         stock: 100,
         supplier: { connect: { id: supplier1.id } },
@@ -170,7 +168,6 @@ async function main() {
     const accessory3 = await prisma.accessory.create({
       data: {
         name: "ريموت تكييف",
-        category: "تكييفات", // ✅ أضف دي
         price: 250.0,
         stock: 50,
         supplier: { connect: { id: supplier2.id } },

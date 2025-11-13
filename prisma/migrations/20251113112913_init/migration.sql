@@ -92,7 +92,6 @@ CREATE TABLE "products" (
 CREATE TABLE "accessories" (
     "accessory_id" SERIAL NOT NULL,
     "name" VARCHAR(255) NOT NULL,
-    "category" VARCHAR(100) NOT NULL,
     "price" DECIMAL(10,2) NOT NULL,
     "stock" INTEGER NOT NULL DEFAULT 0,
     "supplier_id" INTEGER NOT NULL,
@@ -200,11 +199,25 @@ CREATE TABLE "maintenances" (
     "company_id" INTEGER NOT NULL,
     "maintenance_date" TIMESTAMP(6) NOT NULL,
     "price" DECIMAL(10,2) NOT NULL,
-    "status" VARCHAR(20) NOT NULL,
+    "status" VARCHAR(20) NOT NULL DEFAULT 'Pending',
     "notes" TEXT,
     "created_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "maintenances_pkey" PRIMARY KEY ("maintenance_id")
+);
+
+-- CreateTable
+CREATE TABLE "customer_maintenance_statuses" (
+    "status_id" SERIAL NOT NULL,
+    "customer_id" INTEGER NOT NULL,
+    "company_id" INTEGER NOT NULL,
+    "status" VARCHAR(20) NOT NULL DEFAULT 'Active',
+    "inactive_reason" TEXT,
+    "notes" TEXT,
+    "status_changed_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "created_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "customer_maintenance_statuses_pkey" PRIMARY KEY ("status_id")
 );
 
 -- CreateIndex
@@ -324,6 +337,15 @@ CREATE INDEX "maintenances_status_idx" ON "maintenances"("status");
 -- CreateIndex
 CREATE INDEX "maintenances_maintenance_date_idx" ON "maintenances"("maintenance_date");
 
+-- CreateIndex
+CREATE INDEX "customer_maintenance_statuses_company_id_idx" ON "customer_maintenance_statuses"("company_id");
+
+-- CreateIndex
+CREATE INDEX "customer_maintenance_statuses_customer_id_idx" ON "customer_maintenance_statuses"("customer_id");
+
+-- CreateIndex
+CREATE INDEX "customer_maintenance_statuses_status_idx" ON "customer_maintenance_statuses"("status");
+
 -- AddForeignKey
 ALTER TABLE "users" ADD CONSTRAINT "users_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("company_id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -407,3 +429,9 @@ ALTER TABLE "maintenances" ADD CONSTRAINT "maintenances_product_id_fkey" FOREIGN
 
 -- AddForeignKey
 ALTER TABLE "maintenances" ADD CONSTRAINT "maintenances_technician_id_fkey" FOREIGN KEY ("technician_id") REFERENCES "employees"("employee_id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "customer_maintenance_statuses" ADD CONSTRAINT "customer_maintenance_statuses_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "companies"("company_id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "customer_maintenance_statuses" ADD CONSTRAINT "customer_maintenance_statuses_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "customers"("customer_id") ON DELETE CASCADE ON UPDATE CASCADE;
