@@ -71,33 +71,33 @@ export function getOutOfStockAccessories(accessories) {
 /**
  * Group accessories by category
  */
-export function groupByCategory(accessories) {
-  if (!Array.isArray(accessories)) {
-    return {};
-  }
+// export function groupByCategory(accessories) {
+//   if (!Array.isArray(accessories)) {
+//     return {};
+//   }
 
-  return accessories.reduce((groups, accessory) => {
-    const category = accessory.category || "Uncategorized";
+//   return accessories.reduce((groups, accessory) => {
+//     const category = accessory.category || "Uncategorized";
 
-    if (!groups[category]) {
-      groups[category] = {
-        category,
-        items: [],
-        totalStock: 0,
-        totalValue: 0,
-        count: 0,
-      };
-    }
+//     if (!groups[category]) {
+//       groups[category] = {
+//         category,
+//         items: [],
+//         totalStock: 0,
+//         totalValue: 0,
+//         count: 0,
+//       };
+//     }
 
-    groups[category].items.push(accessory);
-    groups[category].totalStock += accessory.stock || 0;
-    groups[category].totalValue +=
-      (accessory.price || 0) * (accessory.stock || 0);
-    groups[category].count += 1;
+//     groups[category].items.push(accessory);
+//     groups[category].totalStock += accessory.stock || 0;
+//     groups[category].totalValue +=
+//       (accessory.price || 0) * (accessory.stock || 0);
+//     groups[category].count += 1;
 
-    return groups;
-  }, {});
-}
+//     return groups;
+//   }, {});
+// }
 
 /**
  * Group accessories by supplier
@@ -208,9 +208,9 @@ export function getStatisticsSummary(accessories) {
     };
   }
 
-  const uniqueCategories = new Set(
-    accessories.map((a) => a.category).filter(Boolean)
-  );
+  // const uniqueCategories = new Set(
+  //   accessories.map((a) => a.category).filter(Boolean)
+  // );
   const uniqueSuppliers = new Set(
     accessories.map((a) => a.supplierId).filter(Boolean)
   );
@@ -222,7 +222,7 @@ export function getStatisticsSummary(accessories) {
     averagePrice: calculateAveragePrice(accessories),
     lowStockCount: getLowStockAccessories(accessories).length,
     outOfStockCount: getOutOfStockAccessories(accessories).length,
-    categoriesCount: uniqueCategories.size,
+    // categoriesCount: uniqueCategories.size,
     suppliersCount: uniqueSuppliers.size,
   };
 }

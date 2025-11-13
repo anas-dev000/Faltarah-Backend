@@ -49,7 +49,7 @@ export const findAll = async (prisma, companyId = null, filters = {}) => {
             select: {
               id: true,
               name: true,
-              category: true,
+              // category: true,
             },
           },
         },
@@ -93,7 +93,7 @@ export const findById = async (prisma, id, companyId = null) => {
             select: {
               id: true,
               name: true,
-              category: true,
+              // category: true,
               price: true,
             },
           },
