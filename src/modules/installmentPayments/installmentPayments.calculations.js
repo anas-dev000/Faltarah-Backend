@@ -48,7 +48,12 @@ export function calculateOverdueAmount(paymentStatus, carryoverAmount) {
  * 2. دفع جزئي -> إنشاء قسط جديد برصيد + المتبقي
  * 3. محاولة دفع أكثر من المبلغ المستحق -> رفع خطأ
  */
-export function processPaymentAndCreateNext(payment, amountPaid, installment) {
+export function processPaymentAndCreateNext(
+  payment,
+  amountPaid,
+  installment,
+  userNotes = null
+) {
   // التحقق من عدم تجاوز المبلغ
   if (amountPaid > payment.amountDue) {
     throw new Error(
@@ -70,13 +75,15 @@ export function processPaymentAndCreateNext(payment, amountPaid, installment) {
     carryoverAmount: carryover,
     overdueAmount: carryover,
     paymentDate: new Date(),
+    // ✅ حفظ الملاحظات اللي المستخدم كتبها
+    notes: userNotes || payment.notes || null,
   };
 
   // بيانات القسط التالي
   let nextPaymentDueDate = new Date(payment.dueDate);
   nextPaymentDueDate.setMonth(nextPaymentDueDate.getMonth() + 1);
 
-  // ⭐ FIX: حساب المبلغ المستحق للقسط التالي بشكل صحيح
+  // حساب المبلغ المستحق للقسط التالي بشكل صحيح
   const nextPaymentAmount =
     currentPaymentStatus === "Paid"
       ? parseFloat(installment.monthlyInstallment) // القسط العادي
@@ -92,13 +99,12 @@ export function processPaymentAndCreateNext(payment, amountPaid, installment) {
     overdueAmount: 0,
     dueDate: nextPaymentDueDate,
     paymentDate: null,
-    notes:
-      payment.notes ||
-      `قسط متتالي - ${
-        carryover > 0
-          ? `برصيد مرحل: ${carryover.toFixed(2)} جنيه`
-          : "بدون أرصدة مرحلة"
-      }`,
+    // ✅ رسالة تلقائية للقسط الجديد فقط (مش للقسط الحالي)
+    notes: `قسط متتالي - ${
+      carryover > 0
+        ? `رصيد مرحل `
+        : "بدون أرصدة مرحلة"
+    }`,
   };
 
   return {

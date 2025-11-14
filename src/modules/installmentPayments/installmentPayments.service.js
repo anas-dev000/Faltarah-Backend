@@ -247,6 +247,7 @@ export async function updatePayment(prisma, id, data, currentUser) {
         payment,
         amountPaid,
         installment,
+        data.notes
       );
 
     // تحديث القسط الحالي
