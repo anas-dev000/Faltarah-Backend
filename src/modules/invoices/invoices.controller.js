@@ -553,56 +553,6 @@ export async function getAllInstallmentPayments(request, reply) {
 }
 
 /**
- * Count pending payments
- */
-export async function countPendingPayments(request, reply) {
-  try {
-    const currentUser = request.user;
-
-    const count = await invoicesService.countPendingPayments(
-      request.server.prisma,
-      currentUser
-    );
-
-    return reply.send({
-      success: true,
-      data: { count },
-    });
-  } catch (error) {
-    request.log.error(error);
-    return reply.status(error.statusCode || 500).send({
-      success: false,
-      error: error.message,
-    });
-  }
-}
-
-/**
- * Count overdue payments
- */
-export async function countOverduePayments(request, reply) {
-  try {
-    const currentUser = request.user;
-
-    const count = await invoicesService.countOverduePayments(
-      request.server.prisma,
-      currentUser
-    );
-
-    return reply.send({
-      success: true,
-      data: { count },
-    });
-  } catch (error) {
-    request.log.error(error);
-    return reply.status(error.statusCode || 500).send({
-      success: false,
-      error: error.message,
-    });
-  }
-}
-
-/**
  * Create installment payment
  */
 export async function createInstallmentPayment(request, reply) {

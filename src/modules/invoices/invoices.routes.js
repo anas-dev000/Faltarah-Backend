@@ -10,17 +10,6 @@ import {
   createInvoiceItem,
   updateInvoiceItem,
   deleteInvoiceItem,
-  getAllInstallments,
-  getInstallmentById,
-  createInstallment,
-  updateInstallment,
-  deleteInstallment,
-  getAllInstallmentPayments,
-  countPendingPayments,
-  countOverduePayments,
-  createInstallmentPayment,
-  updateInstallmentPayment,
-  deleteInstallmentPayment,
 } from "./invoices.controller.js";
 import { authenticate } from "../../shared/middlewares/auth.middleware.js";
 import { authorize } from "../../shared/middlewares/authorize.middleware.js";
@@ -294,194 +283,169 @@ export default async function invoicesRoutes(fastify, options) {
   // ==============================================
 
   // GET /api/invoices/installments - Get all installments
-  fastify.get(
-    "/installments",
-    {
-      preHandler: [authenticate, checkCompanyAccess()],
-      schema: {
-        description: "Get all installments",
-        tags: ["Installments"],
-      },
-    },
-    getAllInstallments
-  );
+  // fastify.get(
+  //   "/installments",
+  //   {
+  //     preHandler: [authenticate, checkCompanyAccess()],
+  //     schema: {
+  //       description: "Get all installments",
+  //       tags: ["Installments"],
+  //     },
+  //   },
+  //   getAllInstallments
+  // );
 
   // GET /api/invoices/installments/:id - Get installment by ID
-  fastify.get(
-    "/installments/:id",
-    {
-      preHandler: [authenticate, checkCompanyAccess()],
-      schema: {
-        description: "Get installment by ID",
-        tags: ["Installments"],
-        params: {
-          type: "object",
-          required: ["id"],
-          properties: {
-            id: { type: "integer", minimum: 1 },
-          },
-        },
-      },
-    },
-    getInstallmentById
-  );
+  // fastify.get(
+  //   "/installments/:id",
+  //   {
+  //     preHandler: [authenticate, checkCompanyAccess()],
+  //     schema: {
+  //       description: "Get installment by ID",
+  //       tags: ["Installments"],
+  //       params: {
+  //         type: "object",
+  //         required: ["id"],
+  //         properties: {
+  //           id: { type: "integer", minimum: 1 },
+  //         },
+  //       },
+  //     },
+  //   },
+  //   getInstallmentById
+  // );
 
   // POST /api/invoices/installments - Create installment
-  fastify.post(
-    "/installments",
-    {
-      preHandler: [authenticate, authorize(["manager", "developer"])],
-      schema: {
-        description: "Create installment",
-        tags: ["Installments"],
-      },
-    },
-    createInstallment
-  );
+  // fastify.post(
+  //   "/installments",
+  //   {
+  //     preHandler: [authenticate, authorize(["manager", "developer"])],
+  //     schema: {
+  //       description: "Create installment",
+  //       tags: ["Installments"],
+  //     },
+  //   },
+  //   createInstallment
+  // );
 
   // PUT /api/invoices/installments/:id - Update installment
-  fastify.put(
-    "/installments/:id",
-    {
-      preHandler: [authenticate, authorize(["manager", "developer"])],
-      schema: {
-        description: "Update installment",
-        tags: ["Installments"],
-        params: {
-          type: "object",
-          required: ["id"],
-          properties: {
-            id: { type: "integer", minimum: 1 },
-          },
-        },
-      },
-    },
-    updateInstallment
-  );
+  // fastify.put(
+  //   "/installments/:id",
+  //   {
+  //     preHandler: [authenticate, authorize(["manager", "developer"])],
+  //     schema: {
+  //       description: "Update installment",
+  //       tags: ["Installments"],
+  //       params: {
+  //         type: "object",
+  //         required: ["id"],
+  //         properties: {
+  //           id: { type: "integer", minimum: 1 },
+  //         },
+  //       },
+  //     },
+  //   },
+  //   updateInstallment
+  // );
 
   // DELETE /api/invoices/installments/:id - Delete installment
-  fastify.delete(
-    "/installments/:id",
-    {
-      preHandler: [authenticate, authorize(["manager", "developer"])],
-      schema: {
-        description: "Delete installment",
-        tags: ["Installments"],
-        params: {
-          type: "object",
-          required: ["id"],
-          properties: {
-            id: { type: "integer", minimum: 1 },
-          },
-        },
-      },
-    },
-    deleteInstallment
-  );
+  // fastify.delete(
+  //   "/installments/:id",
+  //   {
+  //     preHandler: [authenticate, authorize(["manager", "developer"])],
+  //     schema: {
+  //       description: "Delete installment",
+  //       tags: ["Installments"],
+  //       params: {
+  //         type: "object",
+  //         required: ["id"],
+  //         properties: {
+  //           id: { type: "integer", minimum: 1 },
+  //         },
+  //       },
+  //     },
+  //   },
+  //   deleteInstallment
+  // );
 
   // ==============================================
   // INSTALLMENT PAYMENTS ROUTES
   // ==============================================
 
   // GET /api/invoices/installment-payments - Get all installment payments
-  fastify.get(
-    "/installment-payments",
-    {
-      preHandler: [authenticate, checkCompanyAccess()],
-      schema: {
-        description: "Get all installment payments",
-        tags: ["Installment Payments"],
-        querystring: {
-          type: "object",
-          properties: {
-            status: {
-              type: "string",
-              enum: ["Paid", "Partial", "Pending", "Overdue"],
-            },
-            customerId: { type: "integer" },
-          },
-        },
-      },
-    },
-    getAllInstallmentPayments
-  );
+  // fastify.get(
+  //   "/installment-payments",
+  //   {
+  //     preHandler: [authenticate, checkCompanyAccess()],
+  //     schema: {
+  //       description: "Get all installment payments",
+  //       tags: ["Installment Payments"],
+  //       querystring: {
+  //         type: "object",
+  //         properties: {
+  //           status: {
+  //             type: "string",
+  //             enum: ["Paid", "Partial", "Pending", "Overdue"],
+  //           },
+  //           customerId: { type: "integer" },
+  //         },
+  //       },
+  //     },
+  //   },
+  //   getAllInstallmentPayments
+  // );
 
-  // GET /api/invoices/installment-payments/pending-count
-  fastify.get(
-    "/installment-payments/pending-count",
-    {
-      preHandler: [authenticate, checkCompanyAccess()],
-      schema: {
-        description: "Count pending installment payments",
-        tags: ["Installment Payments"],
-      },
-    },
-    countPendingPayments
-  );
-
-  // GET /api/invoices/installment-payments/overdue-count
-  fastify.get(
-    "/installment-payments/overdue-count",
-    {
-      preHandler: [authenticate, checkCompanyAccess()],
-      schema: {
-        description: "Count overdue installment payments",
-        tags: ["Installment Payments"],
-      },
-    },
-    countOverduePayments
-  );
 
   // POST /api/invoices/installment-payments - Create installment payment
-  fastify.post(
-    "/installment-payments",
-    {
-      preHandler: [authenticate, authorize(["manager", "developer"])],
-      schema: {
-        description: "Create installment payment",
-        tags: ["Installment Payments"],
-      },
-    },
-    createInstallmentPayment
-  );
+  // fastify.post(
+  //   "/installment-payments",
+  //   {
+  //     preHandler: [authenticate, authorize(["manager", "developer"])],
+  //     schema: {
+  //       description: "Create installment payment",
+  //       tags: ["Installment Payments"],
+  //     },
+  //   },
+  //   createInstallmentPayment
+  // );
 
   // PUT /api/invoices/installment-payments/:id - Update installment payment
-  fastify.put(
-    "/installment-payments/:id",
-    {
-      preHandler: [authenticate, authorize(["manager", "developer"])],
-      schema: {
-        description: "Update installment payment",
-        tags: ["Installment Payments"],
-        params: {
-          type: "object",
-          required: ["id"],
-          properties: {
-            id: { type: "integer", minimum: 1 },
-          },
-        },
-      },
-    },
-    updateInstallmentPayment
-  );
+  // fastify.put(
+  //   "/installment-payments/:id",
+  //   {
+  //     preHandler: [authenticate, authorize(["manager", "developer"])],
+  //     schema: {
+  //       description: "Update installment payment",
+  //       tags: ["Installment Payments"],
+  //       params: {
+  //         type: "object",
+  //         required: ["id"],
+  //         properties: {
+  //           id: { type: "integer", minimum: 1 },
+  //         },
+  //       },
+  //     },
+  //   },
+  //   updateInstallmentPayment
+  // );
 
   // DELETE /api/invoices/installment-payments/:id - Delete installment payment
-  fastify.delete(
-    "/installment-payments/:id",
-    {
-      preHandler: [authenticate, authorize(["developer"])],
-      schema: {
-        description: "Delete installment payment (Developer only)",
-        tags: ["Installment Payments"],
-        params: {
-          type: "object",
-          required: ["id"],
-          properties: {
-            id: { type: "integer", minimum: 1 },
-          },
-        },
-      },
-    },
-    deleteInstallmentPayment
-  );
+  // fastify.delete(
+  //   "/installment-payments/:id",
+  //   {
+  //     preHandler: [authenticate, authorize(["developer"])],
+  //     schema: {
+  //       description: "Delete installment payment (Developer only)",
+  //       tags: ["Installment Payments"],
+  //       params: {
+  //         type: "object",
+  //         required: ["id"],
+  //         properties: {
+  //           id: { type: "integer", minimum: 1 },
+  //         },
+  //       },
+  //     },
+  //   },
+  //   deleteInstallmentPayment
+  // );
 }
