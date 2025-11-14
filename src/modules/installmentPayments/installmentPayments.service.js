@@ -214,10 +214,47 @@ export async function updatePayment(prisma, id, data, currentUser) {
     );
   }
 
-  // التحقق من أن القسط لم يتم إغلاقه بالكامل
-  if (calculations.isPaymentClosed(payment)) {
+  // ⭐ تحديث جديد: السماح بتعديل آخر قسط إذا كان Partial فقط
+  // منع تعديل أي قسط آخر
+  if (payment.status === "Paid") {
     throw new AppError(
-      "Cannot update a closed payment (Paid or Partial). Create a new payment instead.",
+      "Cannot update a paid payment. Only partial last payment can be edited.",
+      400,
+      ERROR_CODES.VALIDATION_ERROR
+    );
+  }
+
+  if (payment.status === "Partial") {
+    // التحقق من أن هذا هو آخر قسط
+    const allPayments =
+      await installmentPaymentsRepository.findPaymentsByInstallmentId(
+        prisma,
+        payment.installmentId
+      );
+
+    // ترتيب الأقساط حسب التاريخ
+    const sortedPayments = allPayments.sort(
+      (a, b) => new Date(b.dueDate) - new Date(a.dueDate)
+    );
+
+    const lastPayment = sortedPayments[0];
+
+    // إذا لم يكن هذا آخر قسط، منع التعديل
+    if (lastPayment.id !== id) {
+      throw new AppError(
+        "Cannot edit partial payments except the last one. Only the last partial payment can be edited.",
+        400,
+        ERROR_CODES.VALIDATION_ERROR
+      );
+    }
+
+    // السماح بتعديل آخر قسط جزئي
+  }
+
+  // إذا كان معلقاً (Pending)، السماح بالتعديل مباشرة بدون إنشاء قسط جديد
+  if (payment.status === "Pending") {
+    throw new AppError(
+      "Cannot update a pending payment directly. Create a payment record with amountPaid instead.",
       400,
       ERROR_CODES.VALIDATION_ERROR
     );
@@ -241,44 +278,32 @@ export async function updatePayment(prisma, id, data, currentUser) {
       where: { id: payment.installmentId },
     });
 
-    // معالجة الدفع وإنشاء القسط التالي
-    const { currentPaymentUpdate, nextPayment } =
-      calculations.processPaymentAndCreateNext(
-        payment,
-        amountPaid,
-        installment,
-        data.notes
-      );
-
-    // تحديث القسط الحالي
-    await installmentPaymentsRepository.updatePayment(
-      prisma,
-      id,
-      currentPaymentUpdate
+    // حساب الحالة الجديدة
+    const newStatus = calculations.calculatePaymentStatus(
+      amountPaid,
+      payment.amountDue
+    );
+    const carryoverAmount = calculations.calculateCarryoverAmount(
+      amountPaid,
+      payment.amountDue
     );
 
-    // إنشاء القسط التالي
-    if (
-      currentPaymentUpdate.status === "Paid" ||
-      currentPaymentUpdate.status === "Partial"
-    ) {
-      // التحقق من عدم تجاوز عدد الأقساط
-      const totalPayments =
-        await installmentPaymentsRepository.findPaymentsByInstallmentId(
-          prisma,
-          payment.installmentId
-        );
+    // تحديث القسط الحالي
+    const updateData = {
+      amountPaid,
+      status: newStatus,
+      carryoverAmount,
+      overdueAmount: carryoverAmount,
+      paymentDate: new Date(),
+      notes: data.notes || payment.notes,
+    };
 
-      if (totalPayments.length < installment.numberOfMonths) {
-        await installmentPaymentsRepository.createPayment(prisma, nextPayment);
-      }
-    }
+    await installmentPaymentsRepository.updatePayment(prisma, id, updateData);
 
-    // إرجاع القسط المحدث
     return await installmentPaymentsRepository.findPaymentById(prisma, id);
   }
 
-  // تحديث الملاحظات فقط (إذا لم يتم تحديث المبلغ)
+  // تحديث الملاحظات فقط
   const updateData = {};
   if (data.notes !== undefined) {
     updateData.notes = data.notes;
@@ -293,6 +318,75 @@ export async function updatePayment(prisma, id, data, currentUser) {
   }
 
   return payment;
+}
+
+// ============================================
+// دالة مساعدة جديدة: التحقق من أن القسط هو الأخير
+// ============================================
+
+export async function isLastPaymentOfInstallment(
+  prisma,
+  paymentId,
+  installmentId
+) {
+  const allPayments =
+    await installmentPaymentsRepository.findPaymentsByInstallmentId(
+      prisma,
+      installmentId
+    );
+
+  if (allPayments.length === 0) return false;
+
+  const sortedPayments = allPayments.sort(
+    (a, b) => new Date(b.dueDate) - new Date(a.dueDate)
+  );
+
+  return sortedPayments[0].id === paymentId;
+}
+
+// ============================================
+// دالة جديدة: الحصول على حالة إكمال الأقساط
+// ============================================
+
+export async function getInstallmentCompletionStatus(prisma, installmentId) {
+  const allPayments =
+    await installmentPaymentsRepository.findPaymentsByInstallmentId(
+      prisma,
+      installmentId
+    );
+
+  if (allPayments.length === 0) {
+    return {
+      isCompleted: false,
+      lastPaymentStatus: null,
+      totalMonths: 0,
+      completedMonths: 0,
+    };
+  }
+
+  const lastPayment = allPayments.sort(
+    (a, b) => new Date(b.dueDate) - new Date(a.dueDate)
+  )[0];
+
+  const installment = await prisma.installment.findUnique({
+    where: { id: installmentId },
+  });
+
+  const completedMonths = allPayments.filter(
+    (p) => p.status === "Paid" || p.status === "Partial"
+  ).length;
+
+  const isCompleted =
+    allPayments.length === installment.numberOfMonths &&
+    lastPayment.status === "Paid";
+
+  return {
+    isCompleted,
+    lastPaymentStatus: lastPayment.status,
+    totalMonths: installment.numberOfMonths,
+    completedMonths,
+    lastPaymentId: lastPayment.id,
+  };
 }
 
 /**
