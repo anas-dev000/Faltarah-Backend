@@ -458,46 +458,6 @@ export async function findAllInstallmentPayments(
   });
 }
 
-/**
- * Count pending installment payments
- */
-export async function countPendingPayments(prisma, companyId = null) {
-  const where = {
-    status: "Pending",
-  };
-
-  if (companyId !== null) {
-    where.installment = {
-      invoice: {
-        companyId,
-      },
-    };
-  }
-
-  return await prisma.installmentPayment.count({ where });
-}
-
-/**
- * Count overdue payments
- */
-export async function countOverduePayments(prisma, companyId = null) {
-  const where = {
-    status: "Pending",
-    dueDate: {
-      lt: new Date(),
-    },
-  };
-
-  if (companyId !== null) {
-    where.installment = {
-      invoice: {
-        companyId,
-      },
-    };
-  }
-
-  return await prisma.installmentPayment.count({ where });
-}
 
 /**
  * Create installment payment
