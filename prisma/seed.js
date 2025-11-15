@@ -389,8 +389,8 @@ async function main() {
         paidAtInstallation: 0,
         installationCostType: "Percentage",
         installationCostValue: 10,
-        contractDate: new Date("2024-10-15"),
-        installationDate: new Date("2024-10-20"),
+        contractDate: new Date("2025-10-15"),
+        installationDate: new Date("2025-10-20"),
         contractNotes: "عميل ممتاز - دفع كامل المبلغ نقداً",
       },
     });
@@ -458,8 +458,8 @@ async function main() {
         paidAtInstallation: 300.0,
         installationCostType: "Fixed",
         installationCostValue: 250.0,
-        contractDate: new Date("2024-11-01"),
-        installationDate: new Date("2024-11-05"),
+        contractDate: new Date("2025-11-01"),
+        installationDate: new Date("2025-11-05"),
         contractNotes: "تقسيط على 6 أشهر - مقدم 800 جنيه",
       },
     });
@@ -499,8 +499,8 @@ async function main() {
         invoiceId: invoice2.id,
         numberOfMonths: numberOfMonths,
         monthlyInstallment: monthlyInstallment,
-        collectionStartDate: new Date("2024-12-01"),
-        collectionEndDate: new Date("2025-05-01"),
+        collectionStartDate: new Date("2025-12-01"),
+        collectionEndDate: new Date("2026-05-01"),
       },
     });
 
@@ -513,7 +513,7 @@ async function main() {
 
     const installmentPayments = [];
     for (let i = 0; i < numberOfMonths; i++) {
-      const dueDate = new Date("2024-12-01");
+      const dueDate = new Date("2025-12-01");
       dueDate.setMonth(dueDate.getMonth() + i);
 
       installmentPayments.push({
@@ -525,7 +525,7 @@ async function main() {
         overdueAmount: 0,
         status: i === 0 ? "Paid" : "Pending",
         dueDate: dueDate,
-        paymentDate: i === 0 ? new Date("2024-12-01") : null,
+        paymentDate: i === 0 ? new Date("2025-12-01") : null,
         notes: i === 0 ? "تم الدفع في الموعد" : null,
       });
     }
@@ -549,7 +549,7 @@ async function main() {
           productId: product1.id,
           technicianId: employee2.id,
           companyId: company1.id,
-          maintenanceDate: new Date("2024-11-10"),
+          maintenanceDate: new Date("2025-11-10"),
           price: 250.0,
           status: "Completed",
           notes: "تم تغيير الشمعات - الفلتر يعمل بكفاءة عالية",
@@ -560,7 +560,7 @@ async function main() {
           productId: product2.id,
           technicianId: employee2.id,
           companyId: company1.id,
-          maintenanceDate: new Date("2024-12-01"),
+          maintenanceDate: new Date("2025-12-01"),
           price: 250.0,
           status: "Pending",
           notes: "موعد الصيانة الدورية القادم",
@@ -571,7 +571,7 @@ async function main() {
           productId: product3.id,
           technicianId: employee4.id,
           companyId: company2.id,
-          maintenanceDate: new Date("2024-10-25"),
+          maintenanceDate: new Date("2025-10-25"),
           price: 500.0,
           status: "Completed",
           notes: "تم تركيب التكييف بنجاح - تم اختباره",
