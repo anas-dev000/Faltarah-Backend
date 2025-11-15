@@ -61,7 +61,6 @@ export async function getInstallmentById(prisma, id, currentUser) {
 export async function createInstallment(prisma, data, currentUser) {
   const { role, companyId } = currentUser;
 
-  // Verify invoice exists and get its details
   const invoice = await prisma.invoice.findUnique({
     where: { id: data.invoiceId },
     include: { customer: true },
@@ -71,7 +70,6 @@ export async function createInstallment(prisma, data, currentUser) {
     throw new AppError("Invoice not found", 404, ERROR_CODES.NOT_FOUND);
   }
 
-  // Check company access
   if (role === "manager" && invoice.companyId !== companyId) {
     throw new AppError(
       "You can only create installments for your company's invoices",
@@ -80,7 +78,6 @@ export async function createInstallment(prisma, data, currentUser) {
     );
   }
 
-  // Verify it's an installment sale
   if (invoice.saleType !== "Installment") {
     throw new AppError(
       "Cannot create installment for cash sale",
@@ -89,7 +86,6 @@ export async function createInstallment(prisma, data, currentUser) {
     );
   }
 
-  // Check if installment already exists
   const existingInstallment = await installmentsRepository.findByInvoiceId(
     prisma,
     data.invoiceId
@@ -103,7 +99,6 @@ export async function createInstallment(prisma, data, currentUser) {
     );
   }
 
-  // Validate dates
   const startDate = new Date(data.collectionStartDate);
   const endDate = new Date(data.collectionEndDate);
 
@@ -115,7 +110,6 @@ export async function createInstallment(prisma, data, currentUser) {
     );
   }
 
-  // Create installment
   const installmentData = {
     invoiceId: data.invoiceId,
     numberOfMonths: data.numberOfMonths,
@@ -139,7 +133,6 @@ export async function updateInstallment(prisma, id, data, currentUser) {
     throw new AppError("Installment not found", 404, ERROR_CODES.NOT_FOUND);
   }
 
-  // Check company access
   if (role === "manager" && installment.invoice.companyId !== companyId) {
     throw new AppError(
       "You can only update installments in your company",
@@ -148,7 +141,6 @@ export async function updateInstallment(prisma, id, data, currentUser) {
     );
   }
 
-  // Validate dates if provided
   if (data.collectionStartDate && data.collectionEndDate) {
     const startDate = new Date(data.collectionStartDate);
     const endDate = new Date(data.collectionEndDate);
@@ -162,7 +154,6 @@ export async function updateInstallment(prisma, id, data, currentUser) {
     }
   }
 
-  // Prepare update data
   const updateData = { ...data };
   if (data.collectionStartDate) {
     updateData.collectionStartDate = new Date(data.collectionStartDate);
@@ -175,11 +166,12 @@ export async function updateInstallment(prisma, id, data, currentUser) {
 }
 
 /**
- * Delete installment
+ * ✅ Delete installment with cascading deletion
  */
 export async function deleteInstallment(prisma, id, currentUser) {
   const { role, companyId } = currentUser;
 
+  // Only manager and developer can delete
   if (role === "employee") {
     throw new AppError(
       "Only developers and managers can delete installments",
@@ -194,6 +186,7 @@ export async function deleteInstallment(prisma, id, currentUser) {
     throw new AppError("Installment not found", 404, ERROR_CODES.NOT_FOUND);
   }
 
+  // Manager can only delete installments in their company
   if (role === "manager" && installment.invoice.companyId !== companyId) {
     throw new AppError(
       "You can only delete installments in your company",
@@ -202,18 +195,6 @@ export async function deleteInstallment(prisma, id, currentUser) {
     );
   }
 
-  // Check if there are any paid payments
-  const paidPayments = installment.installmentPayments.filter(
-    (p) => p.status === "Paid" || p.status === "Partial"
-  );
-
-  if (paidPayments.length > 0) {
-    throw new AppError(
-      "Cannot delete installment with paid payments",
-      400,
-      ERROR_CODES.VALIDATION_ERROR
-    );
-  }
-
-  await installmentsRepository.deleteById(prisma, id);
+  // ✅ Delete installment with all payments
+  return await installmentsRepository.deleteByIdWithRelations(prisma, id);
 }

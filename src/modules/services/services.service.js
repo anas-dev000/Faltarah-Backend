@@ -50,18 +50,23 @@ export const updateExistingService = async (prisma, id, data, currentUser) => {
   return serviceRepo.updateService(prisma, id, data);
 };
 
+/**
+ * ✅ Delete service with cascading deletion
+ */
 export const deleteExistingService = async (prisma, id, currentUser) => {
   const { role, companyId } = currentUser;
+  
+  // Only manager and developer can delete
+  if (role === "employee") {
+    throw new AppError("Forbidden: Employees cannot delete services", 403);
+  }
+
   let service;
   if (role === "developer") service = await serviceRepo.findServiceById(prisma, id);
   else service = await serviceRepo.findServiceById(prisma, id, companyId);
 
   if (!service) throw new AppError("Service not found or access denied", 404);
 
-  const relations = await serviceRepo.checkServiceRelations(prisma, id);
-  if (relations && relations.hasRelations) {
-    throw new AppError(`Cannot delete service. It has ${relations.totalRelations} related records`, 400);
-  }
-
-  return serviceRepo.deleteService(prisma, id);
+  // ✅ Delete with all relations
+  return serviceRepo.deleteServiceWithRelations(prisma, id);
 };

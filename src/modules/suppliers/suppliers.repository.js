@@ -9,12 +9,10 @@
 export async function findAll(prisma, companyId = null, filters = {}) {
   const where = {};
 
-  // Apply company filter if provided
   if (companyId !== null) {
     where.companyId = companyId;
   }
 
-  // Apply search filter
   if (filters.search) {
     where.OR = [
       { name: { contains: filters.search, mode: "insensitive" } },
@@ -121,7 +119,6 @@ export async function findById(prisma, id, companyId = null) {
         select: {
           id: true,
           name: true,
-          // category: true,
           price: true,
           stock: true,
         },
@@ -200,16 +197,76 @@ export async function update(prisma, id, data) {
 }
 
 /**
- * Delete supplier by ID
+ * ✅ Delete supplier with all related records using transaction
  */
-export async function deleteById(prisma, id) {
-  return await prisma.supplier.delete({
-    where: { id },
+export async function deleteByIdWithRelations(prisma, id) {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Get all products from this supplier
+    const products = await tx.product.findMany({
+      where: { supplierId: id },
+      select: { id: true },
+    });
+
+    const productIds = products.map((p) => p.id);
+
+    if (productIds.length > 0) {
+      // 2. Delete all ProductAccessory relations
+      await tx.productAccessory.deleteMany({
+        where: { productId: { in: productIds } },
+      });
+
+      // 3. Delete all InvoiceItems referencing these products
+      await tx.invoiceItem.deleteMany({
+        where: { productId: { in: productIds } },
+      });
+
+      // 4. Delete all Maintenances referencing these products
+      await tx.maintenance.deleteMany({
+        where: { productId: { in: productIds } },
+      });
+
+      // 5. Delete all products
+      await tx.product.deleteMany({
+        where: { supplierId: id },
+      });
+    }
+
+    // 6. Get all accessories from this supplier
+    const accessories = await tx.accessory.findMany({
+      where: { supplierId: id },
+      select: { id: true },
+    });
+
+    const accessoryIds = accessories.map((a) => a.id);
+
+    if (accessoryIds.length > 0) {
+      // 7. Delete all ProductAccessory relations
+      await tx.productAccessory.deleteMany({
+        where: { accessoryId: { in: accessoryIds } },
+      });
+
+      // 8. Delete all InvoiceItems referencing these accessories
+      await tx.invoiceItem.deleteMany({
+        where: { accessoryId: { in: accessoryIds } },
+      });
+
+      // 9. Delete all accessories
+      await tx.accessory.deleteMany({
+        where: { supplierId: id },
+      });
+    }
+
+    // 10. Finally delete the supplier
+    await tx.supplier.delete({
+      where: { id },
+    });
+
+    return { success: true };
   });
 }
 
 /**
- * Check if supplier has related products or accessories
+ * ✅ Check supplier relations (for information only)
  */
 export async function checkSupplierRelations(prisma, supplierId) {
   const [productsCount, accessoriesCount] = await Promise.all([

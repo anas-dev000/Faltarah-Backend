@@ -60,10 +60,33 @@ export const updateService = async (prisma, id, data) => {
   return prisma.service.update({ where: { id }, data });
 };
 
-export const deleteService = async (prisma, id) => {
-  return prisma.service.delete({ where: { id } });
+/**
+ * ✅ Delete service with cascading deletion using transaction
+ */
+export const deleteServiceWithRelations = async (prisma, id) => {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Delete all maintenances referencing this service
+    await tx.maintenance.deleteMany({
+      where: { serviceId: id },
+    });
+
+    // 2. Delete all invoice items referencing this service
+    await tx.invoiceItem.deleteMany({
+      where: { serviceId: id },
+    });
+
+    // 3. Finally delete the service itself
+    await tx.service.delete({
+      where: { id },
+    });
+
+    return { success: true };
+  });
 };
 
+/**
+ * ✅ Check service relations (for information only)
+ */
 export const checkServiceRelations = async (prisma, id) => {
   const service = await prisma.service.findUnique({
     where: { id },
