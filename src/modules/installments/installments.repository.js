@@ -150,10 +150,20 @@ export async function update(prisma, id, data) {
 }
 
 /**
- * Delete installment
+ * ✅ Delete installment with cascading deletion of payments
  */
-export async function deleteById(prisma, id) {
-  return await prisma.installment.delete({
-    where: { id },
+export async function deleteByIdWithRelations(prisma, id) {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Delete all installment payments first
+    await tx.installmentPayment.deleteMany({
+      where: { installmentId: id },
+    });
+
+    // 2. Delete the installment itself
+    await tx.installment.delete({
+      where: { id },
+    });
+
+    return { success: true };
   });
 }

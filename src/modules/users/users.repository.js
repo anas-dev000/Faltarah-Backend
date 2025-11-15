@@ -4,10 +4,7 @@
 
 /**
  * Fetch all users with filtering by company
- * @param {Object} prisma - Prisma client
- * @param {Number|null} companyId - Company ID (null for developers)
  */
-
 export const findAllUsers = async (prisma, companyId = null) => {
   const whereClause = companyId ? { companyId } : {};
 
@@ -36,9 +33,6 @@ export const findAllUsers = async (prisma, companyId = null) => {
 
 /**
  * Retrieve user by ID with company verification
- * @param {Object} prisma - Prisma client
- * @param {Number} id - User ID
- * @param {Number|null} companyId - Company ID (null for developers)
  */
 export const findUserById = async (prisma, id, companyId = null) => {
   const whereClause = {
@@ -85,8 +79,6 @@ export const findUserByEmail = async (prisma, email) => {
 
 /**
  * Create a new user
- * @param {Object} prisma - Prisma client
- * @param {Object} data - User data
  */
 export const createUser = async (prisma, data) => {
   return prisma.user.create({
@@ -111,10 +103,6 @@ export const createUser = async (prisma, data) => {
 
 /**
  * User update with company verification
- * @param {Object} prisma - Prisma client
- * @param {Number} id - User ID
- * @param {Object} data - Data to be updated
- * @param {Number|null} companyId - Company ID (null for developers)
  */
 export const updateUser = async (prisma, id, data, companyId = null) => {
   const whereClause = {
@@ -144,16 +132,16 @@ export const updateUser = async (prisma, id, data, companyId = null) => {
 };
 
 /**
- * Delete user with company verification
- * @param {Object} prisma - Prisma client
- * @param {Number} id - User ID
- * @param {Number|null} companyId - Company ID (null for developers)
- */ export const deleteUser = async (prisma, id, companyId = null) => {
+ * ✅ Delete user with cascading deletion (no actual cascading needed for users in this schema)
+ */
+export const deleteUser = async (prisma, id, companyId = null) => {
   const whereClause = {
     id,
     ...(companyId && { companyId }),
   };
 
+  // Users don't have any direct foreign key references that need cascading
+  // They are referenced by other tables but not in a way that prevents deletion
   return prisma.user.delete({
     where: whereClause,
   });
@@ -161,10 +149,6 @@ export const updateUser = async (prisma, id, data, companyId = null) => {
 
 /**
  * Checking for an email address at a specific company
- * @param {Object} prisma - Prisma client
- * @param {String} email - Email address
- * @param {Number} companyId - Company ID
- * @param {Number|null} excludeUserId - Exclude a specific user (for updates)
  */
 export const isEmailExistsInCompany = async (
   prisma,
@@ -187,8 +171,6 @@ export const isEmailExistsInCompany = async (
 
 /**
  * Count users in a specific company
- * @param {Object} prisma - Prisma client
- * @param {Number} companyId - Company ID
  */
 export const countUsersByCompany = async (prisma, companyId) => {
   return prisma.user.count({
