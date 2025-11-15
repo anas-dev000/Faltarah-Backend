@@ -22,6 +22,7 @@ import customerRoutes from "./modules/customers/customers.routes.js";
 import employeeRoutes from "./modules/employees/employees.routes.js";
 import serviceRoutes from "./modules/services/services.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
+import installmentPaymentsRoutes from "./modules/installmentPayments/installmentPayments.routes.js";
 
 export async function buildApp(opts = {}) {
   const app = Fastify({
@@ -51,11 +52,11 @@ export async function buildApp(opts = {}) {
 
   await app.register(prismaPlugin);
   await app.register(fastifyMultipart, {
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-    files: 1, // Max 1 file
-  },
-});
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB limit
+      files: 1, // Max 1 file
+    },
+  });
   // Health Check
   app.get("/", async () => {
     return { status: "ok", timestamp: new Date().toISOString() };
@@ -69,12 +70,17 @@ export async function buildApp(opts = {}) {
   await app.register(accessoryRoutes, { prefix: "/api/accessories" });
   await app.register(suppliersRoutes, { prefix: "/api/suppliers" });
   await app.register(maintenanceRoutes, { prefix: "/api/maintenances" });
-  await app.register(invoicesRoutes, { prefix: "/api/invoices" });
+  await app.register(installmentPaymentsRoutes, {
+    prefix: "/api/installment-payments",
+  });
   await app.register(installmentsRoutes, { prefix: "/api/installments" });
+  await app.register(invoicesRoutes, { prefix: "/api/invoices" });
   await app.register(customerRoutes, { prefix: "/api/customers" });
   await app.register(employeeRoutes, { prefix: "/api/employees" });
   await app.register(serviceRoutes,{prefix:"/api/services"})
   await app.register(dashboardRoutes, { prefix: "/api/dashboard" });
+  
+  
   // --- Error Handler ---
   app.setErrorHandler(errorHandler);
 

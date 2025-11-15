@@ -38,7 +38,11 @@ export async function getInvoiceById(prisma, id, currentUser) {
     targetCompanyId = companyId;
   }
 
-  const invoice = await invoicesRepository.findById(prisma, id, targetCompanyId);
+  const invoice = await invoicesRepository.findById(
+    prisma,
+    id,
+    targetCompanyId
+  );
 
   if (!invoice) {
     throw new AppError(
@@ -62,7 +66,11 @@ export async function getRecentInvoices(prisma, currentUser, limit = 5) {
     targetCompanyId = companyId;
   }
 
-  return await invoicesRepository.getRecentInvoices(prisma, targetCompanyId, limit);
+  return await invoicesRepository.getRecentInvoices(
+    prisma,
+    targetCompanyId,
+    limit
+  );
 }
 
 /**
@@ -76,7 +84,10 @@ export async function getMonthlyRevenue(prisma, currentUser) {
     targetCompanyId = companyId;
   }
 
-  return await invoicesRepository.calculateMonthlyRevenue(prisma, targetCompanyId);
+  return await invoicesRepository.calculateMonthlyRevenue(
+    prisma,
+    targetCompanyId
+  );
 }
 
 /**
@@ -159,11 +170,7 @@ export async function createInvoice(prisma, data, currentUser) {
     });
 
     if (!technician) {
-      throw new AppError(
-        "Technician not found",
-        404,
-        ERROR_CODES.NOT_FOUND
-      );
+      throw new AppError("Technician not found", 404, ERROR_CODES.NOT_FOUND);
     }
   }
 
@@ -172,7 +179,9 @@ export async function createInvoice(prisma, data, currentUser) {
     ...data,
     companyId: targetCompanyId,
     contractDate: new Date(data.contractDate),
-    installationDate: data.installationDate ? new Date(data.installationDate) : null,
+    installationDate: data.installationDate
+      ? new Date(data.installationDate)
+      : null,
   };
 
   return await invoicesRepository.create(prisma, invoiceData);
@@ -369,10 +378,8 @@ export async function createInstallment(prisma, data, currentUser) {
     );
   }
 
-  const existingInstallment = await invoicesRepository.findInstallmentByInvoiceId(
-    prisma,
-    data.invoiceId
-  );
+  const existingInstallment =
+    await invoicesRepository.findInstallmentByInvoiceId(prisma, data.invoiceId);
 
   if (existingInstallment) {
     throw new AppError(
@@ -423,7 +430,11 @@ export async function deleteInstallment(prisma, id, currentUser) {
 /**
  * Get all installment payments
  */
-export async function getAllInstallmentPayments(prisma, currentUser, filters = {}) {
+export async function getAllInstallmentPayments(
+  prisma,
+  currentUser,
+  filters = {}
+) {
   const { role, companyId } = currentUser;
 
   let targetCompanyId = null;
@@ -438,33 +449,6 @@ export async function getAllInstallmentPayments(prisma, currentUser, filters = {
   );
 }
 
-/**
- * Count pending payments
- */
-export async function countPendingPayments(prisma, currentUser) {
-  const { role, companyId } = currentUser;
-
-  let targetCompanyId = null;
-  if (role === "manager" || role === "employee") {
-    targetCompanyId = companyId;
-  }
-
-  return await invoicesRepository.countPendingPayments(prisma, targetCompanyId);
-}
-
-/**
- * Count overdue payments
- */
-export async function countOverduePayments(prisma, currentUser) {
-  const { role, companyId } = currentUser;
-
-  let targetCompanyId = null;
-  if (role === "manager" || role === "employee") {
-    targetCompanyId = companyId;
-  }
-
-  return await invoicesRepository.countOverduePayments(prisma, targetCompanyId);
-}
 
 /**
  * Create installment payment
@@ -560,7 +544,11 @@ export async function updateInstallmentPayment(prisma, id, data, currentUser) {
     updateData.paymentDate = new Date(data.paymentDate);
   }
 
-  return await invoicesRepository.updateInstallmentPayment(prisma, id, updateData);
+  return await invoicesRepository.updateInstallmentPayment(
+    prisma,
+    id,
+    updateData
+  );
 }
 
 /**
