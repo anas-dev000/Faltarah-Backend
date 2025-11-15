@@ -23,7 +23,7 @@ import employeeRoutes from "./modules/employees/employees.routes.js";
 import serviceRoutes from "./modules/services/services.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import installmentPaymentsRoutes from "./modules/installmentPayments/installmentPayments.routes.js";
-
+import pdfRoutes from "./modules/pdf/pdf.routes.js";
 export async function buildApp(opts = {}) {
   const app = Fastify({
     logger: {
@@ -79,7 +79,7 @@ export async function buildApp(opts = {}) {
   await app.register(employeeRoutes, { prefix: "/api/employees" });
   await app.register(serviceRoutes,{prefix:"/api/services"})
   await app.register(dashboardRoutes, { prefix: "/api/dashboard" });
-  
+  await app.register(pdfRoutes,{prefix:'/api/pdf'})
   
   // --- Error Handler ---
   app.setErrorHandler(errorHandler);
