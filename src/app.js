@@ -21,6 +21,7 @@ import installmentsRoutes from "./modules/installments/installments.routes.js";
 import customerRoutes from "./modules/customers/customers.routes.js";
 import employeeRoutes from "./modules/employees/employees.routes.js";
 import serviceRoutes from "./modules/services/services.routes.js";
+import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import installmentPaymentsRoutes from "./modules/installmentPayments/installmentPayments.routes.js";
 
 export async function buildApp(opts = {}) {
@@ -76,8 +77,10 @@ export async function buildApp(opts = {}) {
   await app.register(invoicesRoutes, { prefix: "/api/invoices" });
   await app.register(customerRoutes, { prefix: "/api/customers" });
   await app.register(employeeRoutes, { prefix: "/api/employees" });
-  await app.register(serviceRoutes, { prefix: "/api/services" });
-
+  await app.register(serviceRoutes,{prefix:"/api/services"})
+  await app.register(dashboardRoutes, { prefix: "/api/dashboard" });
+  
+  
   // --- Error Handler ---
   app.setErrorHandler(errorHandler);
 
