@@ -49,7 +49,6 @@ export const findAll = async (prisma, companyId = null, filters = {}) => {
             select: {
               id: true,
               name: true,
-              // category: true,
             },
           },
         },
@@ -93,7 +92,6 @@ export const findById = async (prisma, id, companyId = null) => {
             select: {
               id: true,
               name: true,
-              // category: true,
               price: true,
             },
           },
@@ -253,10 +251,34 @@ export const update = async (prisma, id, data) => {
 };
 
 /**
- * Delete accessory
+ * Delete accessory (simple - without relations check)
  */
 export const deleteById = async (prisma, id) => {
   return await prisma.accessory.delete({
     where: { id },
+  });
+};
+
+/**
+ * ✅ Delete accessory with all related records using transaction
+ */
+export const deleteByIdWithRelations = async (prisma, id) => {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Delete all ProductAccessory relations
+    await tx.productAccessory.deleteMany({
+      where: { accessoryId: id },
+    });
+
+    // 2. Delete all InvoiceItem records (if any)
+    await tx.invoiceItem.deleteMany({
+      where: { accessoryId: id },
+    });
+
+    // 3. Finally delete the accessory itself
+    await tx.accessory.delete({
+      where: { id },
+    });
+
+    return { success: true };
   });
 };
