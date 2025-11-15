@@ -7,10 +7,6 @@ import { AppError } from "../../shared/errors/AppError.js";
 
 /**
  * Fetch all employees according to user permissions with pagination
- * @param {Object} prisma - Prisma client
- * @param {Object} currentUser - Current token user
- * @param {Number} page - Page number
- * @param {Number} limit - Records per page
  */
 export const getAllEmployees = async (prisma, currentUser, page = 1, limit = 10) => {
   const { role, companyId } = currentUser;
@@ -26,9 +22,6 @@ export const getAllEmployees = async (prisma, currentUser, page = 1, limit = 10)
 
 /**
  * Fetch an employee by ID with role-based access control
- * @param {Object} prisma - Prisma client
- * @param {Number} id - Employee ID
- * @param {Object} currentUser - Current token user
  */
 export const getEmployeeById = async (prisma, id, currentUser) => {
   const { role, companyId } = currentUser;
@@ -45,11 +38,9 @@ export const getEmployeeById = async (prisma, id, currentUser) => {
 
   return employee;
 };
+
 /**
- * Fetch customers by type (Installation / Maintenance)
- * @param {Object} prisma - Prisma client
- * @param {String} customerType - The type of customers to filter
- * @param {Object} currentUser - Current token user
+ * Fetch employees by role (SalesRep / Technician)
  */
 export const getEmployeesByRole = async (
   prisma,
@@ -64,10 +55,9 @@ export const getEmployeesByRole = async (
     role === "developer" ? null : companyId
   );
 };
+
 /**
  * Fetch all Roles (distinct)
- * @param {Object} prisma - Prisma client
- * @param {Object} currentUser - Current token user
  */
 export const getAllRoles = async (prisma, currentUser) => {
   const { role, companyId } = currentUser;
@@ -80,8 +70,6 @@ export const getAllRoles = async (prisma, currentUser) => {
 
 /**
  * Fetch all Status (distinct)
- * @param {Object} prisma - Prisma client
- * @param {Object} currentUser - Current token user
  */
 export const getAllStatus = async (prisma, currentUser) => {
   const { role, companyId } = currentUser;
@@ -91,35 +79,29 @@ export const getAllStatus = async (prisma, currentUser) => {
     role === "developer" ? null : companyId
   );
 };
+
 /**
  * Get employees filtered by status word
- * @param {Object} prisma - Prisma client
- * @param {String} statusWord - "active" or "inactive"
- * @param {Object} currentUser - Current authenticated user
  */
 export const getEmployeesByStatus = async (prisma, statusWord, currentUser) => {
   const { role, companyId } = currentUser;
 
-  // Validate role
   if (!["developer", "manager", "employee"].includes(role)) {
     throw new AppError("Forbidden: Invalid role access", 403);
   }
 
-  // Map status word to boolean
   let isEmployed;
   if (statusWord.toLowerCase() === "active") isEmployed = true;
   else if (statusWord.toLowerCase() === "inactive") isEmployed = false;
   else throw new AppError("Invalid status parameter, use 'active' or 'inactive'", 400);
 
-  // Developer sees all companies, others only their company
   const targetCompanyId = role === "developer" ? null : companyId;
 
   return employeeRepo.findEmployeesByStatus(prisma, isEmployed, targetCompanyId);
 };
+
 /**
  * Count all employees within a company
- * @param {Object} prisma - Prisma client
- * @param {Object} currentUser - Current token user
  */
 export const countEmployees = async (prisma, currentUser) => {
   const { role, companyId } = currentUser;
@@ -133,10 +115,6 @@ export const countEmployees = async (prisma, currentUser) => {
 
 /**
  * Create a new employee
- * @param {Object} prisma - Prisma client instance
- * @param {Object} data - Employee data
- * @param {Object} currentUser - Current authenticated user
- * @returns {Promise<Object>} - Created employee
  */
 export const createNewEmployee = async (prisma, data, currentUser) => {
   if (!data.fullName || !data.nationalId || !data.primaryNumber) {
@@ -186,11 +164,6 @@ export const createNewEmployee = async (prisma, data, currentUser) => {
 
 /**
  * Update an existing employee
- * @param {Object} prisma - Prisma client instance
- * @param {Number} id - Employee ID
- * @param {Object} data - Update data
- * @param {Object} currentUser - Current authenticated user
- * @returns {Promise<Object>} - Updated employee
  */
 export const updateExistingEmployee = async (prisma, id, data, currentUser) => {
   const employee = await prisma.employee.findFirst({
@@ -216,7 +189,6 @@ export const updateExistingEmployee = async (prisma, id, data, currentUser) => {
   if (data.district !== undefined) updateData.district = data.district;
   if (data.isEmployed !== undefined) updateData.isEmployed = data.isEmployed;
 
-  // ✅ Image fields
   if (data.idCardImage !== undefined) updateData.idCardImage = data.idCardImage;
   if (data.idCardImagePublicId !== undefined)
     updateData.idCardImagePublicId = data.idCardImagePublicId;
@@ -225,7 +197,6 @@ export const updateExistingEmployee = async (prisma, id, data, currentUser) => {
     throw new Error("No fields to update");
   }
 
-  // Prevent duplicate national IDs
   if (data.nationalId && data.nationalId !== employee.nationalId) {
     const existingEmployee = await prisma.employee.findFirst({
       where: {
@@ -257,10 +228,7 @@ export const updateExistingEmployee = async (prisma, id, data, currentUser) => {
 };
 
 /**
- * Delete an employee by ID
- * @param {Object} prisma - Prisma client
- * @param {Number} id - Employee ID
- * @param {Object} currentUser - Current token user
+ * ✅ Delete an employee by ID with cascading deletion
  */
 export const deleteExistingEmployee = async (prisma, id, currentUser) => {
   const { role, companyId } = currentUser;
@@ -279,7 +247,12 @@ export const deleteExistingEmployee = async (prisma, id, currentUser) => {
     throw new AppError("Employee not found or access denied", 404);
   }
 
-  return employeeRepo.deleteEmployee(prisma, id, role === "developer" ? null : companyId);
+  // ✅ Delete employee with all related records using transaction
+  return employeeRepo.deleteEmployeeWithRelations(
+    prisma, 
+    id, 
+    role === "developer" ? null : companyId
+  );
 };
 
 export default {

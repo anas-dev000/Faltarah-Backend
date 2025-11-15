@@ -43,15 +43,6 @@ export const getCompanyById = async (prisma, id, currentUser) => {
   }
   // Manager and Employee can only access their own company
   else if (role === "manager" || role === "employee") {
-    // if (id !== companyId) {
-    //   throw new AppError("Forbidden: You can only view your own company", 403);
-    // }
-    console.log(id);
-    console.log(companyId);
-    console.log(currentUser);
-
-    
-    
     company = await companyRepo.findCompanyById(prisma, id, companyId);
   }
 
@@ -198,10 +189,7 @@ export const updateCompanySubscription = async (
 };
 
 /**
- * Delete company
- * @param {Object} prisma - Prisma client
- * @param {Number} id - ID of the company to be deleted
- * @param {Object} currentUser - Current token user
+ * ✅ Delete company with cascading deletion (Developer only)
  */
 export const deleteExistingCompany = async (prisma, id, currentUser) => {
   const { role, companyId } = currentUser;
@@ -222,17 +210,6 @@ export const deleteExistingCompany = async (prisma, id, currentUser) => {
     throw new AppError("Company not found", 404);
   }
 
-  // Check if company has related records
-  const relations = await companyRepo.checkCompanyRelations(prisma, id);
-  if (relations && relations.hasRelations) {
-    throw new AppError(
-      `Cannot delete company. It has ${relations.totalRelations} related records. ` +
-        `(Users: ${relations.counts.users}, Customers: ${relations.counts.customers}, ` +
-        `Invoices: ${relations.counts.invoices}, etc.)`,
-      400
-    );
-  }
-
-  await companyRepo.deleteCompany(prisma, id);
-  return { success: true };
+  // ✅ Delete company with all related records using transaction
+  return companyRepo.deleteCompanyWithRelations(prisma, id);
 };

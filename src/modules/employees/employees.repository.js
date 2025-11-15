@@ -4,12 +4,13 @@
 
 /**
  * Fetch all employees with filtering by company + pagination
- * @param {Object} prisma - Prisma client
- * @param {Number|null} companyId - Company ID (null for developers)
- * @param {Number} page - Current page number
- * @param {Number} limit - Number of records per page
  */
-export const findAllEmployees = async (prisma, companyId = null, page = 1, limit = 10) => {
+export const findAllEmployees = async (
+  prisma,
+  companyId = null,
+  page = 1,
+  limit = 10
+) => {
   const whereClause = companyId ? { companyId } : {};
 
   const skip = (page - 1) * limit;
@@ -60,9 +61,6 @@ export const findAllEmployees = async (prisma, companyId = null, page = 1, limit
 
 /**
  * Retrieve employee by ID with company verification
- * @param {Object} prisma - Prisma client
- * @param {Number} id - Employee ID
- * @param {Number|null} companyId - Company ID (null for developers)
  */
 export const findEmployeeById = async (prisma, id, companyId = null) => {
   const whereClause = {
@@ -100,8 +98,6 @@ export const findEmployeeById = async (prisma, id, companyId = null) => {
 
 /**
  * Get distinct roles for a company
- * @param {Object} prisma - Prisma client
- * @param {Number|null} companyId - Company ID (null for developers)
  */
 export const findAllRoles = async (prisma, companyId = null) => {
   const whereClause = companyId ? { companyId } : {};
@@ -112,10 +108,9 @@ export const findAllRoles = async (prisma, companyId = null) => {
     select: { role: true },
   });
 };
+
 /**
  * Get distinct Status for a company
- * @param {Object} prisma - Prisma client
- * @param {Number|null} companyId - Company ID (null for developers)
  */
 export const findAllStatus = async (prisma, companyId = null) => {
   const whereClause = companyId ? { companyId } : {};
@@ -129,9 +124,6 @@ export const findAllStatus = async (prisma, companyId = null) => {
 
 /**
  * Fetch employees by role (SalesRep / Technician)
- * @param {Object} prisma - Prisma client
- * @param {String} role - Employee role
- * @param {Number|null} companyId - Company ID (null for developers)
  */
 export const findEmployeesByRole = async (prisma, role, companyId = null) => {
   const whereClause = {
@@ -155,11 +147,12 @@ export const findEmployeesByRole = async (prisma, role, companyId = null) => {
 
 /**
  * Fetch employees by status with company filtering
- * @param {Object} prisma - Prisma client
- * @param {Boolean} isEmployed - Employee status
- * @param {Number|null} companyId - Company ID (null for developers)
  */
-export const findEmployeesByStatus = async (prisma, isEmployed, companyId = null) => {
+export const findEmployeesByStatus = async (
+  prisma,
+  isEmployed,
+  companyId = null
+) => {
   const whereClause = {
     isEmployed,
     ...(companyId && { companyId }),
@@ -190,11 +183,10 @@ export const findEmployeesByStatus = async (prisma, isEmployed, companyId = null
       createdAt: "desc",
     },
   });
-};``
+};
+
 /**
  * Count employees for a specific company
- * @param {Object} prisma - Prisma client
- * @param {Number} companyId - Company ID
  */
 export const countEmployeesByCompany = async (prisma, companyId) => {
   return prisma.employee.count({
@@ -204,8 +196,6 @@ export const countEmployeesByCompany = async (prisma, companyId) => {
 
 /**
  * Create a new employee
- * @param {Object} prisma - Prisma client
- * @param {Object} data - Employee data
  */
 export const createEmployee = async (prisma, data) => {
   return prisma.employee.create({
@@ -235,10 +225,6 @@ export const createEmployee = async (prisma, data) => {
 
 /**
  * Update employee with company verification
- * @param {Object} prisma - Prisma client
- * @param {Number} id - Employee ID
- * @param {Object} data - Updated fields
- * @param {Number|null} companyId - Company ID (null for developers)
  */
 export const updateEmployee = async (prisma, id, data, companyId = null) => {
   const whereClause = {
@@ -273,10 +259,7 @@ export const updateEmployee = async (prisma, id, data, companyId = null) => {
 };
 
 /**
- * Delete employee with company verification
- * @param {Object} prisma - Prisma client
- * @param {Number} id - Employee ID
- * @param {Number|null} companyId - Company ID (null for developers)
+ * Delete employee (simple - without relations check)
  */
 export const deleteEmployee = async (prisma, id, companyId = null) => {
   const whereClause = {
@@ -290,11 +273,85 @@ export const deleteEmployee = async (prisma, id, companyId = null) => {
 };
 
 /**
+ * ✅ Delete employee with all related records using transaction
+ */
+export const deleteEmployeeWithRelations = async (
+  prisma,
+  id,
+  companyId = null
+) => {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Get all invoices where this employee is salesRep or technician
+    const invoicesAsSalesRep = await tx.invoice.findMany({
+      where: { salesRepId: id },
+      select: { id: true },
+    });
+
+    const invoicesAsTechnician = await tx.invoice.findMany({
+      where: { technicianId: id },
+      select: { id: true },
+    });
+
+    const allInvoiceIds = [
+      ...invoicesAsSalesRep.map((inv) => inv.id),
+      ...invoicesAsTechnician.map((inv) => inv.id),
+    ];
+
+    // Remove duplicates
+    const uniqueInvoiceIds = [...new Set(allInvoiceIds)];
+
+    if (uniqueInvoiceIds.length > 0) {
+      // 2. Delete all installment payments related to these invoices
+      const installments = await tx.installment.findMany({
+        where: { invoiceId: { in: uniqueInvoiceIds } },
+        select: { id: true },
+      });
+
+      const installmentIds = installments.map((inst) => inst.id);
+
+      if (installmentIds.length > 0) {
+        await tx.installmentPayment.deleteMany({
+          where: { installmentId: { in: installmentIds } },
+        });
+      }
+
+      // 3. Delete all installments
+      await tx.installment.deleteMany({
+        where: { invoiceId: { in: uniqueInvoiceIds } },
+      });
+
+      // 4. Delete all invoice items
+      await tx.invoiceItem.deleteMany({
+        where: { invoiceId: { in: uniqueInvoiceIds } },
+      });
+
+      // 5. Delete all invoices
+      await tx.invoice.deleteMany({
+        where: { id: { in: uniqueInvoiceIds } },
+      });
+    }
+
+    // 6. Delete all maintenances where this employee is the technician
+    await tx.maintenance.deleteMany({
+      where: { technicianId: id },
+    });
+
+    // 7. Finally delete the employee
+    const whereClause = {
+      id,
+      ...(companyId && { companyId }),
+    };
+
+    await tx.employee.delete({
+      where: whereClause,
+    });
+
+    return { success: true };
+  });
+};
+
+/**
  * Check if national ID exists in the same company
- * @param {Object} prisma - Prisma client
- * @param {String} nationalId - National ID
- * @param {Number} companyId - Company ID
- * @param {Number|null} excludeEmployeeId - Exclude a specific employee (for updates)
  */
 export const isNationalIdExistsInCompany = async (
   prisma,

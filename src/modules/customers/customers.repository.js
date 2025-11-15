@@ -4,17 +4,17 @@
 
 /**
  * Fetch all customers with filtering by company + pagination
- * @param {Object} prisma - Prisma client
- * @param {Number|null} companyId - Company ID (null for developers)
- * @param {Number} page - Current page number
- * @param {Number} limit - Number of records per page
  */
-export const findAllCustomers = async (prisma, companyId = null, page = 1, limit = 10) => {
+export const findAllCustomers = async (
+  prisma,
+  companyId = null,
+  page = 1,
+  limit = 10
+) => {
   const whereClause = companyId ? { companyId } : {};
 
   const skip = (page - 1) * limit;
 
-  // Get paginated customers
   const customers = await prisma.customer.findMany({
     where: whereClause,
     select: {
@@ -44,7 +44,6 @@ export const findAllCustomers = async (prisma, companyId = null, page = 1, limit
     },
   });
 
-  // Get total count for pagination
   const total = await prisma.customer.count({
     where: whereClause,
   });
@@ -61,9 +60,6 @@ export const findAllCustomers = async (prisma, companyId = null, page = 1, limit
 
 /**
  * Retrieve customer by ID with company verification
- * @param {Object} prisma - Prisma client
- * @param {Number} id - Customer ID
- * @param {Number|null} companyId - Company ID (null for developers)
  */
 export const findCustomerById = async (prisma, id, companyId = null) => {
   const whereClause = {
@@ -99,9 +95,7 @@ export const findCustomerById = async (prisma, id, companyId = null) => {
 };
 
 /**
- * Get distinct governorates for a company
- * @param {Object} prisma - Prisma client
- * @param {Number|null} companyId - Company ID (null for developers)
+ * Get distinct types for a company
  */
 export const findAllTypes = async (prisma, companyId = null) => {
   const whereClause = companyId ? { companyId } : {};
@@ -113,14 +107,14 @@ export const findAllTypes = async (prisma, companyId = null) => {
   });
 };
 
-
 /**
  * Fetch customers by type (Installation / Maintenance)
- * @param {Object} prisma - Prisma client
- * @param {String} customerType - Customer type
- * @param {Number|null} companyId - Company ID (null for developers)
  */
-export const findCustomersByType = async (prisma, customerType, companyId = null) => {
+export const findCustomersByType = async (
+  prisma,
+  customerType,
+  companyId = null
+) => {
   const whereClause = {
     customerType,
     ...(companyId && { companyId }),
@@ -142,8 +136,6 @@ export const findCustomersByType = async (prisma, customerType, companyId = null
 
 /**
  * Get distinct governorates for a company
- * @param {Object} prisma - Prisma client
- * @param {Number|null} companyId - Company ID (null for developers)
  */
 export const findAllGovernorates = async (prisma, companyId = null) => {
   const whereClause = companyId ? { companyId } : {};
@@ -156,9 +148,7 @@ export const findAllGovernorates = async (prisma, companyId = null) => {
 };
 
 /**
- * Get distinct governorates for a company
- * @param {Object} prisma - Prisma client
- * @param {Number|null} companyId - Company ID (null for developers)
+ * Get distinct cities for a company
  */
 export const findAllCities = async (prisma, companyId = null) => {
   const whereClause = companyId ? { companyId } : {};
@@ -170,14 +160,14 @@ export const findAllCities = async (prisma, companyId = null) => {
   });
 };
 
-
 /**
  * Get distinct cities for a specific governorate
- * @param {Object} prisma - Prisma client
- * @param {String} governorate - Governorate name
- * @param {Number|null} companyId - Company ID (null for developers)
  */
-export const findCitiesByGovernorate = async (prisma, governorate, companyId = null) => {
+export const findCitiesByGovernorate = async (
+  prisma,
+  governorate,
+  companyId = null
+) => {
   const whereClause = {
     governorate,
     ...(companyId && { companyId }),
@@ -192,8 +182,6 @@ export const findCitiesByGovernorate = async (prisma, governorate, companyId = n
 
 /**
  * Count customers for a specific company
- * @param {Object} prisma - Prisma client
- * @param {Number} companyId - Company ID
  */
 export const countCustomersByCompany = async (prisma, companyId) => {
   return prisma.customer.count({
@@ -203,8 +191,6 @@ export const countCustomersByCompany = async (prisma, companyId) => {
 
 /**
  * Create a new customer
- * @param {Object} prisma - Prisma client
- * @param {Object} data - Customer data
  */
 export const createCustomer = async (prisma, data) => {
   return prisma.customer.create({
@@ -220,7 +206,7 @@ export const createCustomer = async (prisma, data) => {
       city: true,
       district: true,
       createdAt: true,
-      idCardImage:true,
+      idCardImage: true,
       idCardImagePublicId: true,
       company: {
         select: {
@@ -234,10 +220,6 @@ export const createCustomer = async (prisma, data) => {
 
 /**
  * Update customer with company verification
- * @param {Object} prisma - Prisma client
- * @param {Number} id - Customer ID
- * @param {Object} data - Updated fields
- * @param {Number|null} companyId - Company ID (null for developers)
  */
 export const updateCustomer = async (prisma, id, data, companyId = null) => {
   const whereClause = {
@@ -270,10 +252,7 @@ export const updateCustomer = async (prisma, id, data, companyId = null) => {
 };
 
 /**
- * Delete customer with company verification
- * @param {Object} prisma - Prisma client
- * @param {Number} id - Customer ID
- * @param {Number|null} companyId - Company ID (null for developers)
+ * Delete customer (simple - without relations check)
  */
 export const deleteCustomer = async (prisma, id, companyId = null) => {
   const whereClause = {
@@ -287,11 +266,70 @@ export const deleteCustomer = async (prisma, id, companyId = null) => {
 };
 
 /**
+ * ✅ Delete customer with all related records using transaction
+ */
+export const deleteCustomerWithRelations = async (
+  prisma,
+  id,
+  companyId = null
+) => {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Get all invoices for this customer
+    const invoices = await tx.invoice.findMany({
+      where: { customerId: id },
+      select: { id: true },
+    });
+
+    const invoiceIds = invoices.map((inv) => inv.id);
+
+    if (invoiceIds.length > 0) {
+      // 2. Delete all installment payments related to this customer
+      await tx.installmentPayment.deleteMany({
+        where: { customerId: id },
+      });
+
+      // 3. Delete all installments related to these invoices
+      await tx.installment.deleteMany({
+        where: { invoiceId: { in: invoiceIds } },
+      });
+
+      // 4. Delete all invoice items related to these invoices
+      await tx.invoiceItem.deleteMany({
+        where: { invoiceId: { in: invoiceIds } },
+      });
+
+      // 5. Delete all invoices
+      await tx.invoice.deleteMany({
+        where: { id: { in: invoiceIds } },
+      });
+    }
+
+    // 6. Delete all maintenances for this customer
+    await tx.maintenance.deleteMany({
+      where: { customerId: id },
+    });
+
+    // 7. Delete all customer maintenance statuses (already CASCADE in schema, but being explicit)
+    await tx.customerMaintenanceStatus.deleteMany({
+      where: { customerId: id },
+    });
+
+    // 8. Finally delete the customer
+    const whereClause = {
+      id,
+      ...(companyId && { companyId }),
+    };
+
+    await tx.customer.delete({
+      where: whereClause,
+    });
+
+    return { success: true };
+  });
+};
+
+/**
  * Check if national ID exists in the same company
- * @param {Object} prisma - Prisma client
- * @param {String} nationalId - National ID
- * @param {Number} companyId - Company ID
- * @param {Number|null} excludeCustomerId - Exclude a specific customer (for updates)
  */
 export const isNationalIdExistsInCompany = async (
   prisma,

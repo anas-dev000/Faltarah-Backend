@@ -128,7 +128,6 @@ export const createAccessory = async (prisma, data, currentUser) => {
   // Create accessory
   const accessoryData = {
     name: data.name,
-    // category: data.category || null,
     price: Number(data.price),
     stock: data.stock !== undefined ? Number(data.stock) : 0,
     supplierId: Number(data.supplierId),
@@ -189,7 +188,6 @@ export const updateAccessory = async (prisma, id, data, currentUser) => {
   // Update accessory
   const updateData = {
     ...(data.name && { name: data.name }),
-    // ...(data.category !== undefined && { category: data.category }),
     ...(data.price !== undefined && { price: Number(data.price) }),
     ...(data.stock !== undefined && { stock: Number(data.stock) }),
     ...(data.supplierId && { supplierId: Number(data.supplierId) }),
@@ -235,7 +233,7 @@ export const updateAccessoryStock = async (
 };
 
 /**
- * Delete accessory
+ * Delete accessory with cascading deletion of related records
  */
 export const deleteAccessory = async (prisma, id, currentUser) => {
   const { role, companyId } = currentUser;
@@ -253,29 +251,6 @@ export const deleteAccessory = async (prisma, id, currentUser) => {
     throw new AppError("You can only delete accessories in your company", 403);
   }
 
-  // Check if accessory is used in any invoices
-  const invoiceItemsCount = await prisma.invoiceItem.count({
-    where: { accessoryId: id },
-  });
-
-  if (invoiceItemsCount > 0) {
-    throw new AppError("Cannot delete accessory that is used in invoices", 400);
-  }
-
-  // Check if accessory is linked to any products
-  const productAccessoriesCount = await prisma.productAccessory.count({
-    where: { accessoryId: id },
-  });
-
-  if (productAccessoriesCount > 0) {
-    throw new AppError(
-      "Cannot delete accessory that is linked to products",
-      400
-    );
-  }
-
-  // Delete accessory
-  await accessoriesRepository.deleteById(prisma, id);
-
-  return { success: true };
+  // ✅ Delete accessory with all related records using transaction
+  return await accessoriesRepository.deleteByIdWithRelations(prisma, id);
 };
