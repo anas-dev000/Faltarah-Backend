@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>فاتورة رقم {{invoiceId}}</title>
+  <style>
+    body { font-family: Arial, sans-serif; direction: rtl; margin: 20px; }
+    header { text-align: center; margin-bottom: 20px; }
+    h1 { margin: 0; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th, td { border: 1px solid #333; padding: 8px; text-align: center; }
+    th { background-color: #f2f2f2; }
+    .totals { text-align: right; margin-top: 10px; }
+    footer { text-align: center; margin-top: 30px; font-size: 12px; color: #555; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>فاتورة رقم {{invoiceId}}</h1>
+  <p>تاريخ الفاتورة: {{contractDate}}</p>
+</header>
+
+<section>
+  <h3>بيانات العميل</h3>
+  <p>الاسم: {{customerName}}</p>
+  <p>الرقم القومي: {{customerNationalId}}</p>
+  <p>العنوان: {{customerCity}}، {{customerDistrict}}</p>
+  <p>الهاتف: {{customerPhone}}</p>
+</section>
+
+<section>
+  <h3>المنتجات / الخدمات</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>المنتج / الخدمة</th>
+        <th>الكمية</th>
+        <th>سعر الوحدة</th>
+        <th>المجموع</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each invoiceItems}}
+      <tr>
+        <td>{{this.name}}</td>
+        <td>{{this.quantity}}</td>
+        <td>{{this.unitPrice}}</td>
+        <td>{{this.subtotal}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+</section>
+
+<section class="totals">
+  <p>الإجمالي: {{totalAmount}}</p>
+  <p>الخصم: {{discountAmount}}</p>
+  <p>الصافي: {{netAmount}}</p>
+</section>
+
+<footer>
+  <p>{{companyName}} - {{companyAddress}} - هاتف: {{companyPhone}}</p>
+</footer>
+
+</body>
+</html>
