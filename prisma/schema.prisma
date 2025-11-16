@@ -54,10 +54,51 @@ model User {
 
   // Relations
   company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  passwordResets PasswordReset[]
 
   @@index([companyId])
   @@map("users")
 }
+
+model PendingUser {
+  id             Int       @id @default(autoincrement()) @map("pending_user_id")
+  email          String    @unique @db.VarChar(255)
+  fullName       String    @map("full_name") @db.VarChar(255)
+  passwordHash   String    @map("password_hash") @db.VarChar(255)
+  companyName    String    @map("company_name") @db.VarChar(255)
+  companyPhone   String?   @map("company_phone") @db.VarChar(15)
+  companyAddress String?   @map("company_address") @db.Text
+  companyEmail   String    @map("company_email") @db.VarChar(255)
+  otp            String    @db.VarChar(6)
+  otpExpiry      DateTime  @map("otp_expiry") @db.Timestamp(6)
+  isVerified     Boolean   @default(false) @map("is_verified")
+  verifiedAt     DateTime? @map("verified_at") @db.Timestamp(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@index([email])
+  @@index([otp])
+  @@index([otpExpiry])
+  @@map("pending_users")
+}
+
+
+model PasswordReset {
+  id        Int       @id @default(autoincrement()) @map("reset_id")
+  userId    Int       @map("user_id")
+  token     String    @unique @db.VarChar(255)
+  expiry    DateTime  @db.Timestamp(6)
+  isUsed    Boolean   @default(false) @map("is_used")
+  usedAt    DateTime? @map("used_at") @db.Timestamp(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiry])
+  @@map("password_resets")
+}
+
 
 // =====================================================
 // Customer Entity
