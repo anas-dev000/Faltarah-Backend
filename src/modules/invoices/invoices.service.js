@@ -262,10 +262,64 @@ export async function getInvoiceItems(prisma, invoiceId, currentUser) {
 }
 
 /**
- * Create invoice item
+ * Create invoice item WITH STOCK DEDUCTION
  */
 export async function createInvoiceItem(prisma, data, currentUser) {
   const invoice = await getInvoiceById(prisma, data.invoiceId, currentUser);
+
+  if (data.productId) {
+    const product = await prisma.product.findUnique({
+      where: { id: data.productId },
+    });
+
+    if (!product) {
+      throw new AppError("Product not found", 404, ERROR_CODES.NOT_FOUND);
+    }
+
+    if (product.stock < data.quantity) {
+      throw new AppError(
+        `Insufficient stock for product "${product.name}". Available: ${product.stock}, Requested: ${data.quantity}`,
+        400,
+        ERROR_CODES.VALIDATION_ERROR
+      );
+    }
+
+    await prisma.product.update({
+      where: { id: data.productId },
+      data: {
+        stock: {
+          decrement: data.quantity,
+        },
+      },
+    });
+  }
+
+  if (data.accessoryId) {
+    const accessory = await prisma.accessory.findUnique({
+      where: { id: data.accessoryId },
+    });
+
+    if (!accessory) {
+      throw new AppError("Accessory not found", 404, ERROR_CODES.NOT_FOUND);
+    }
+
+    if (accessory.stock < data.quantity) {
+      throw new AppError(
+        `Insufficient stock for accessory "${accessory.name}". Available: ${accessory.stock}, Requested: ${data.quantity}`,
+        400,
+        ERROR_CODES.VALIDATION_ERROR
+      );
+    }
+
+    await prisma.accessory.update({
+      where: { id: data.accessoryId },
+      data: {
+        stock: {
+          decrement: data.quantity,
+        },
+      },
+    });
+  }
 
   const subtotal = data.quantity * data.unitPrice;
 
@@ -313,263 +367,4 @@ export async function deleteInvoiceItem(prisma, id, currentUser) {
   await getInvoiceById(prisma, item.invoiceId, currentUser);
 
   await invoicesRepository.deleteInvoiceItem(prisma, id);
-}
-
-// ==============================================
-// INSTALLMENTS SERVICE (إذا كانت موجودة في هذا الملف)
-// ==============================================
-
-/**
- * Get all installments
- */
-export async function getAllInstallments(prisma, currentUser) {
-  const { role, companyId } = currentUser;
-
-  let targetCompanyId = null;
-  if (role === "manager" || role === "employee") {
-    targetCompanyId = companyId;
-  }
-
-  return await invoicesRepository.findAllInstallments(prisma, targetCompanyId);
-}
-
-/**
- * Get installment by ID
- */
-export async function getInstallmentById(prisma, id, currentUser) {
-  const { role, companyId } = currentUser;
-
-  let targetCompanyId = null;
-  if (role === "manager" || role === "employee") {
-    targetCompanyId = companyId;
-  }
-
-  const installment = await invoicesRepository.findInstallmentById(
-    prisma,
-    id,
-    targetCompanyId
-  );
-
-  if (!installment) {
-    throw new AppError(
-      "Installment not found or access denied",
-      404,
-      ERROR_CODES.NOT_FOUND
-    );
-  }
-
-  return installment;
-}
-
-/**
- * Create installment
- */
-export async function createInstallment(prisma, data, currentUser) {
-  const invoice = await getInvoiceById(prisma, data.invoiceId, currentUser);
-
-  if (invoice.saleType !== "Installment") {
-    throw new AppError(
-      "Cannot create installment for cash sale",
-      400,
-      ERROR_CODES.VALIDATION_ERROR
-    );
-  }
-
-  const existingInstallment =
-    await invoicesRepository.findInstallmentByInvoiceId(prisma, data.invoiceId);
-
-  if (existingInstallment) {
-    throw new AppError(
-      "Installment already exists for this invoice",
-      409,
-      ERROR_CODES.CONFLICT
-    );
-  }
-
-  const installmentData = {
-    ...data,
-    collectionStartDate: new Date(data.collectionStartDate),
-    collectionEndDate: new Date(data.collectionEndDate),
-  };
-
-  return await invoicesRepository.createInstallment(prisma, installmentData);
-}
-
-/**
- * Update installment
- */
-export async function updateInstallment(prisma, id, data, currentUser) {
-  const installment = await getInstallmentById(prisma, id, currentUser);
-
-  const updateData = { ...data };
-  if (data.collectionStartDate) {
-    updateData.collectionStartDate = new Date(data.collectionStartDate);
-  }
-  if (data.collectionEndDate) {
-    updateData.collectionEndDate = new Date(data.collectionEndDate);
-  }
-
-  return await invoicesRepository.updateInstallment(prisma, id, updateData);
-}
-
-/**
- * Delete installment
- */
-export async function deleteInstallment(prisma, id, currentUser) {
-  await getInstallmentById(prisma, id, currentUser);
-  await invoicesRepository.deleteInstallment(prisma, id);
-}
-
-// ==============================================
-// INSTALLMENT PAYMENTS SERVICE
-// ==============================================
-
-/**
- * Get all installment payments
- */
-export async function getAllInstallmentPayments(
-  prisma,
-  currentUser,
-  filters = {}
-) {
-  const { role, companyId } = currentUser;
-
-  let targetCompanyId = null;
-  if (role === "manager" || role === "employee") {
-    targetCompanyId = companyId;
-  }
-
-  return await invoicesRepository.findAllInstallmentPayments(
-    prisma,
-    targetCompanyId,
-    filters
-  );
-}
-
-/**
- * Create installment payment
- */
-export async function createInstallmentPayment(prisma, data, currentUser) {
-  const installment = await getInstallmentById(
-    prisma,
-    data.installmentId,
-    currentUser
-  );
-
-  const amountPaid = parseFloat(data.amountPaid) || 0;
-  const amountDue = parseFloat(data.amountDue);
-
-  let status = "Pending";
-  let overdueAmount = 0;
-  let carryoverAmount = 0;
-
-  if (amountPaid >= amountDue) {
-    status = "Paid";
-    overdueAmount = 0;
-    carryoverAmount = 0;
-  } else if (amountPaid > 0 && amountPaid < amountDue) {
-    status = "Partial";
-    overdueAmount = amountDue - amountPaid;
-    carryoverAmount = overdueAmount;
-  }
-
-  const paymentData = {
-    installmentId: data.installmentId,
-    customerId: data.customerId,
-    amountDue,
-    amountPaid,
-    status,
-    overdueAmount,
-    carryoverAmount,
-    dueDate: new Date(data.dueDate),
-    paymentDate: data.paymentDate ? new Date(data.paymentDate) : null,
-    notes: data.notes || null,
-  };
-
-  return await invoicesRepository.createInstallmentPayment(prisma, paymentData);
-}
-
-/**
- * Update installment payment
- */
-export async function updateInstallmentPayment(prisma, id, data, currentUser) {
-  const { role, companyId } = currentUser;
-
-  let targetCompanyId = null;
-  if (role === "manager" || role === "employee") {
-    targetCompanyId = companyId;
-  }
-
-  const payment = await invoicesRepository.findInstallmentPaymentById(
-    prisma,
-    id,
-    targetCompanyId
-  );
-
-  if (!payment) {
-    throw new AppError(
-      "Payment not found or access denied",
-      404,
-      ERROR_CODES.NOT_FOUND
-    );
-  }
-
-  const updateData = { ...data };
-
-  if (data.amountPaid !== undefined) {
-    const amountPaid = parseFloat(data.amountPaid);
-    const amountDue = payment.amountDue;
-
-    if (amountPaid >= amountDue) {
-      updateData.status = "Paid";
-      updateData.overdueAmount = 0;
-      updateData.carryoverAmount = 0;
-    } else if (amountPaid > 0) {
-      updateData.status = "Partial";
-      updateData.overdueAmount = amountDue - amountPaid;
-      updateData.carryoverAmount = updateData.overdueAmount;
-    } else {
-      updateData.status = "Pending";
-      updateData.overdueAmount = 0;
-      updateData.carryoverAmount = 0;
-    }
-  }
-
-  if (data.paymentDate) {
-    updateData.paymentDate = new Date(data.paymentDate);
-  }
-
-  return await invoicesRepository.updateInstallmentPayment(
-    prisma,
-    id,
-    updateData
-  );
-}
-
-/**
- * Delete installment payment
- */
-export async function deleteInstallmentPayment(prisma, id, currentUser) {
-  const { role, companyId } = currentUser;
-
-  let targetCompanyId = null;
-  if (role === "manager" || role === "employee") {
-    targetCompanyId = companyId;
-  }
-
-  const payment = await invoicesRepository.findInstallmentPaymentById(
-    prisma,
-    id,
-    targetCompanyId
-  );
-
-  if (!payment) {
-    throw new AppError(
-      "Payment not found or access denied",
-      404,
-      ERROR_CODES.NOT_FOUND
-    );
-  }
-
-  await invoicesRepository.deleteInstallmentPayment(prisma, id);
 }
