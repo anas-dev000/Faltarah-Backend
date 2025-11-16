@@ -211,11 +211,39 @@ export async function update(prisma, id, data) {
 }
 
 /**
- * Delete invoice by ID
+ * ✅ Delete invoice with all related records using transaction
  */
-export async function deleteById(prisma, id) {
-  return await prisma.invoice.delete({
-    where: { id },
+export async function deleteByIdWithRelations(prisma, id) {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Get installment if exists
+    const installment = await tx.installment.findUnique({
+      where: { invoiceId: id },
+      select: { id: true },
+    });
+
+    // 2. If installment exists, delete all its payments first
+    if (installment) {
+      await tx.installmentPayment.deleteMany({
+        where: { installmentId: installment.id },
+      });
+
+      // 3. Delete the installment
+      await tx.installment.delete({
+        where: { id: installment.id },
+      });
+    }
+
+    // 4. Delete all invoice items
+    await tx.invoiceItem.deleteMany({
+      where: { invoiceId: id },
+    });
+
+    // 5. Finally delete the invoice
+    await tx.invoice.delete({
+      where: { id },
+    });
+
+    return { success: true };
   });
 }
 
@@ -276,7 +304,7 @@ export async function deleteInvoiceItem(prisma, id) {
 }
 
 // ==============================================
-// INSTALLMENTS REPOSITORY
+// INSTALLMENTS REPOSITORY (في حال وجودها هنا)
 // ==============================================
 
 /**
@@ -457,7 +485,6 @@ export async function findAllInstallmentPayments(
     },
   });
 }
-
 
 /**
  * Create installment payment

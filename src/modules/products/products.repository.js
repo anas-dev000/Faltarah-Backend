@@ -101,7 +101,6 @@ export const findById = async (prisma, id, companyId = null) => {
             select: {
               id: true,
               name: true,
-              // category: true,
               price: true,
               stock: true,
             },
@@ -289,11 +288,31 @@ export const update = async (prisma, id, data) => {
 };
 
 /**
- * Delete product
+ * ✅ Delete product with all related records using transaction
  */
-export const deleteById = async (prisma, id) => {
-  return await prisma.product.delete({
-    where: { id },
+export const deleteByIdWithRelations = async (prisma, id) => {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Delete all ProductAccessory relations
+    await tx.productAccessory.deleteMany({
+      where: { productId: id },
+    });
+
+    // 2. Delete all InvoiceItems referencing this product
+    await tx.invoiceItem.deleteMany({
+      where: { productId: id },
+    });
+
+    // 3. Delete all Maintenances referencing this product
+    await tx.maintenance.deleteMany({
+      where: { productId: id },
+    });
+
+    // 4. Finally delete the product
+    await tx.product.delete({
+      where: { id },
+    });
+
+    return { success: true };
   });
 };
 

@@ -96,7 +96,6 @@ export async function getMonthlyRevenue(prisma, currentUser) {
 export async function createInvoice(prisma, data, currentUser) {
   const { role, companyId } = currentUser;
 
-  // Determine target company ID
   let targetCompanyId;
 
   if (role === "developer") {
@@ -126,7 +125,6 @@ export async function createInvoice(prisma, data, currentUser) {
     );
   }
 
-  // Verify customer exists and belongs to company
   const customer = await prisma.customer.findFirst({
     where: {
       id: data.customerId,
@@ -142,7 +140,6 @@ export async function createInvoice(prisma, data, currentUser) {
     );
   }
 
-  // Verify sales rep exists
   const salesRep = await prisma.employee.findFirst({
     where: {
       id: data.salesRepId,
@@ -159,7 +156,6 @@ export async function createInvoice(prisma, data, currentUser) {
     );
   }
 
-  // Verify technician if provided
   if (data.technicianId) {
     const technician = await prisma.employee.findFirst({
       where: {
@@ -174,7 +170,6 @@ export async function createInvoice(prisma, data, currentUser) {
     }
   }
 
-  // Create invoice
   const invoiceData = {
     ...data,
     companyId: targetCompanyId,
@@ -209,7 +204,6 @@ export async function updateInvoice(prisma, id, data, currentUser) {
     }
   }
 
-  // Prepare update data
   const updateData = { ...data };
   if (data.contractDate) {
     updateData.contractDate = new Date(data.contractDate);
@@ -222,11 +216,12 @@ export async function updateInvoice(prisma, id, data, currentUser) {
 }
 
 /**
- * Delete invoice
+ * ✅ Delete invoice with cascading deletion
  */
 export async function deleteInvoice(prisma, id, currentUser) {
   const { role, companyId } = currentUser;
 
+  // Only manager and developer can delete
   if (role === "employee") {
     throw new AppError(
       "Only developers and managers can delete invoices",
@@ -241,6 +236,7 @@ export async function deleteInvoice(prisma, id, currentUser) {
     throw new AppError("Invoice not found", 404, ERROR_CODES.NOT_FOUND);
   }
 
+  // Manager can only delete invoices in their company
   if (role === "manager" && invoice.companyId !== companyId) {
     throw new AppError(
       "You can only delete invoices in your company",
@@ -249,7 +245,8 @@ export async function deleteInvoice(prisma, id, currentUser) {
     );
   }
 
-  await invoicesRepository.deleteById(prisma, id);
+  // ✅ Delete invoice with all relations
+  return await invoicesRepository.deleteByIdWithRelations(prisma, id);
 }
 
 // ==============================================

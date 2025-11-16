@@ -1,5 +1,5 @@
 // ==========================================
-// maintenances.service
+// maintenances.service.js
 // ==========================================
 
 import * as maintenanceRepo from "./maintenances.repository.js";
@@ -286,21 +286,32 @@ export const bulkUpdateMaintenanceStatus = async (
 };
 
 /**
- * Delete maintenance
+ * ✅ Delete maintenance (simple - no cascading needed)
  */
 export const deleteMaintenance = async (prisma, id, currentUser) => {
   const { role, companyId } = currentUser;
 
-  if (role !== "developer") {
-    throw new AppError("فقط المطورون يمكنهم حذف الصيانات", 403);
+  // Only manager and developer can delete
+  if (role === "employee") {
+    throw new AppError("الموظفون لا يمكنهم حذف الصيانات", 403);
   }
 
-  const maintenance = await maintenanceRepo.findById(prisma, id, null);
+  const maintenance = await maintenanceRepo.findById(
+    prisma,
+    id,
+    role === "developer" ? null : companyId
+  );
 
   if (!maintenance) {
-    throw new AppError("الصيانة غير موجودة", 404);
+    throw new AppError("الصيانة غير موجودة أو لا توجد صلاحية", 404);
   }
 
+  // Manager can only delete maintenances in their company
+  if (role === "manager" && maintenance.companyId !== companyId) {
+    throw new AppError("يمكنك فقط حذف الصيانات في شركتك", 403);
+  }
+
+  // ✅ Delete maintenance (no cascading needed - maintenance is a leaf entity)
   await maintenanceRepo.deleteById(prisma, id);
 
   return { success: true };
@@ -349,7 +360,6 @@ export const updateCustomerMaintenanceStatus = async (
     throw new AppError("الموظفون لا يمكنهم تحديث حالة العملاء", 403);
   }
 
-  // ======= Validate input =======
   if (!customerIds || !Array.isArray(customerIds) || customerIds.length === 0) {
     throw new AppError("معرفات العملاء غير صالحة", 400);
   }

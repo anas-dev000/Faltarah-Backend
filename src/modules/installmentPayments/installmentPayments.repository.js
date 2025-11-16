@@ -192,7 +192,7 @@ export async function updatePayment(prisma, id, data) {
 }
 
 /**
- * Delete installment payment
+ * ✅ Delete installment payment (simple - no cascading needed)
  */
 export async function deletePayment(prisma, id) {
   return await prisma.installmentPayment.delete({
@@ -202,7 +202,6 @@ export async function deletePayment(prisma, id) {
 
 /**
  * Find payments by installment ID
- * ترتيب حسب تاريخ الاستحقاق
  */
 export async function findPaymentsByInstallmentId(prisma, installmentId) {
   return await prisma.installmentPayment.findMany({

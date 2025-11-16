@@ -1,5 +1,5 @@
 // ==========================================
-// maintenances.repository
+// maintenances.repository.js
 // ==========================================
 
 /**
@@ -12,7 +12,6 @@ export const findAll = async (prisma, companyId, filters = {}) => {
     ...(companyId && { companyId }),
   };
 
-  // Filter by search term
   if (search) {
     whereClause.OR = [
       { customer: { fullName: { contains: search, mode: "insensitive" } } },
@@ -22,7 +21,6 @@ export const findAll = async (prisma, companyId, filters = {}) => {
     ];
   }
 
-  // maintenanceStatuses CustomerMaintenanceStatus[] Filter by month
   if (month && month !== "all") {
     const [year, monthNum] = month.split("-").map(Number);
     const startDate = new Date(year, monthNum - 1, 1);
@@ -34,29 +32,24 @@ export const findAll = async (prisma, companyId, filters = {}) => {
     };
   }
 
-  // maintenanceStatuses CustomerMaintenanceStatus[] Filter by maintenance status
   if (status && status !== "all") {
     whereClause.status = status;
   }
 
-  // maintenanceStatuses CustomerMaintenanceStatus[] FIXED & OPTIMIZED: Filter by customer maintenance status (Active/Inactive)
   if (customerStatus && customerStatus !== "all") {
-
     whereClause.customer = {
       maintenanceStatuses: {
         some: {
-          status: customerStatus, // "Active" / "Inactive"
+          status: customerStatus,
         },
       },
     };
   }
 
-  // Filter by specific customer
   if (customerId) {
     whereClause.customerId = customerId;
   }
 
-  // maintenanceStatuses CustomerMaintenanceStatus[] OPTIMIZED: Efficient queries with proper relations
   return prisma.maintenance.findMany({
     where: whereClause,
     include: {
@@ -69,7 +62,6 @@ export const findAll = async (prisma, companyId, filters = {}) => {
           city: true,
           district: true,
           customerType: true,
-          // maintenanceStatuses CustomerMaintenanceStatus[] Include maintenance status
           maintenanceStatuses: {
             orderBy: { statusChangedAt: "desc" },
             take: 1,
@@ -383,7 +375,6 @@ export const update = async (prisma, id, data) => {
  * Bulk update maintenance status
  */
 export const bulkUpdateStatus = async (prisma, maintenanceIds, status) => {
-
   return prisma.maintenance.updateMany({
     where: {
       id: {
@@ -397,7 +388,7 @@ export const bulkUpdateStatus = async (prisma, maintenanceIds, status) => {
 };
 
 /**
- * Delete maintenance record
+ * ✅ Delete maintenance record (simple - no cascading needed)
  */
 export const deleteById = async (prisma, id) => {
   return prisma.maintenance.delete({
@@ -463,7 +454,6 @@ export const autoMarkOverdue = async (prisma, companyId = null) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-
   return prisma.maintenance.updateMany({
     where: {
       ...(companyId && { companyId }),
@@ -482,8 +472,6 @@ export const autoMarkOverdue = async (prisma, companyId = null) => {
  * Get inactive customers using CustomerMaintenanceStatus table
  */
 export const getInactiveCustomers = async (prisma, companyId) => {
-
-  // Get customers with Inactive status from CustomerMaintenanceStatus
   const inactiveStatuses = await prisma.customerMaintenanceStatus.findMany({
     where: {
       ...(companyId && { companyId }),
@@ -507,8 +495,6 @@ export const getInactiveCustomers = async (prisma, companyId) => {
     },
   });
 
-
-  // Extract customer data and add status info
   return inactiveStatuses.map((status) => ({
     ...status.customer,
     inactiveReason: status.inactiveReason,
