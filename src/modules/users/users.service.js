@@ -266,17 +266,16 @@ export const loginUser = async (prisma, email, password) => {
     );
   }
 
-  // Check if the company's subscription has expired (except for developers)
+  // ✅ CHANGED: Check subscription but don't block login
+  let subscriptionExpired = false;
   if (user.role !== "developer") {
     const company = user.company;
     if (
       company.subscriptionExpiryDate &&
       new Date(company.subscriptionExpiryDate) < new Date()
     ) {
-      throw new AppError(
-        "Company subscription has expired. Please contact support.",
-        403
-      );
+      // Instead of throwing error, mark subscription as expired
+      subscriptionExpired = true;
     }
   }
 
@@ -301,6 +300,7 @@ export const loginUser = async (prisma, email, password) => {
       fullName: user.fullName,
       email: user.email,
       role: user.role,
+      subscriptionExpired,
     },
   };
 };

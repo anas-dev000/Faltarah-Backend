@@ -312,3 +312,427 @@ export const sendWelcomeEmail = async (email, fullName, companyName) => {
 
   await transporter.sendMail(mailOptions);
 };
+
+/**
+ * إرسال بريد تأكيد الاشتراك
+ */ 
+export const sendSubscriptionConfirmationEmail = async (
+  email,
+  companyName,
+  planName,
+  startDate,
+  endDate
+) => {
+  const formattedStartDate = new Date(startDate).toLocaleDateString("ar-EG");
+  const formattedEndDate = new Date(endDate).toLocaleDateString("ar-EG");
+
+  const mailOptions = {
+    from: `"فلترة - نظام إدارة الفلاتر" <${process.env.EMAIL_FROM}>`,
+    to: email,
+    subject: "تأكيد تفعيل الاشتراك ✅",
+    html: `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+          }
+          .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 24px;
+          }
+          .content {
+            padding: 30px;
+            text-align: right;
+          }
+          .success-icon {
+            text-align: center;
+            font-size: 60px;
+            margin: 20px 0;
+          }
+          .info-box {
+            background: #f8f9fa;
+            border-right: 4px solid #667eea;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+          }
+          .info-box p {
+            margin: 10px 0;
+            color: #333;
+          }
+          .info-box strong {
+            color: #667eea;
+          }
+          .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+          }
+          .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎉 تم تفعيل اشتراكك بنجاح!</h1>
+          </div>
+          <div class="content">
+            <div class="success-icon">✅</div>
+            
+            <p>مرحباً <strong>${companyName}</strong>،</p>
+            
+            <p>نحن سعداء بإبلاغك أنه تم تفعيل اشتراكك في نظام فلترة بنجاح!</p>
+            
+            <div class="info-box">
+              <p><strong>الباقة:</strong> ${planName}</p>
+              <p><strong>تاريخ البدء:</strong> ${formattedStartDate}</p>
+              <p><strong>تاريخ الانتهاء:</strong> ${formattedEndDate}</p>
+            </div>
+            
+            <p>يمكنك الآن الاستمتاع بجميع مميزات النظام بدون أي قيود.</p>
+            
+            <div style="text-align: center;">
+              <a href="${process.env.FRONTEND_URL}/dashboard" class="button">
+                الذهاب إلى لوحة التحكم
+              </a>
+            </div>
+            
+            <p style="color: #666; font-size: 14px; margin-top: 30px;">
+              إذا كان لديك أي استفسار، لا تتردد في التواصل معنا.
+            </p>
+          </div>
+          <div class="footer">
+            <p>© 2025 فلترة - نظام إدارة الفلاتر والتكييفات</p>
+            <p>هذا البريد الإلكتروني مُرسل تلقائياً، يرجى عدم الرد عليه</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Subscription confirmation email sent to ${email}`);
+  } catch (error) {
+    console.error("❌ Error sending subscription confirmation email:", error);
+    throw error;
+  }
+};
+
+/**
+ * إرسال تحذير قرب انتهاء الاشتراك
+ */
+export const sendSubscriptionExpiryWarningEmail = async (
+  email,
+  companyName,
+  expiryDate,
+  daysRemaining
+) => {
+  const formattedDate = new Date(expiryDate).toLocaleDateString("ar-EG");
+
+  const mailOptions = {
+    from: `"فلترة - نظام إدارة الفلاتر" <${process.env.EMAIL_FROM}>`,
+    to: email,
+    subject: `⚠️ تنبيه: اشتراكك ينتهي خلال ${daysRemaining} ${
+      daysRemaining === 1 ? "يوم" : "أيام"
+    }`,
+    html: `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+          }
+          .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 24px;
+          }
+          .content {
+            padding: 30px;
+            text-align: right;
+          }
+          .warning-icon {
+            text-align: center;
+            font-size: 60px;
+            margin: 20px 0;
+          }
+          .warning-box {
+            background: #fff3cd;
+            border-right: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+          }
+          .warning-box h3 {
+            margin-top: 0;
+            color: #856404;
+          }
+          .warning-box p {
+            color: #856404;
+            margin: 10px 0;
+          }
+          .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+          }
+          .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>⚠️ تنبيه انتهاء الاشتراك</h1>
+          </div>
+          <div class="content">
+            <div class="warning-icon">⏰</div>
+            
+            <p>عزيزي <strong>${companyName}</strong>،</p>
+            
+            <div class="warning-box">
+              <h3>اشتراكك على وشك الانتهاء!</h3>
+              <p><strong>المتبقي:</strong> ${daysRemaining} ${
+      daysRemaining === 1 ? "يوم واحد" : "أيام"
+    }</p>
+              <p><strong>تاريخ الانتهاء:</strong> ${formattedDate}</p>
+            </div>
+            
+            <p>لتجنب انقطاع الخدمة، يرجى تجديد اشتراكك في أقرب وقت ممكن.</p>
+            
+            <p><strong>ماذا سيحدث بعد انتهاء الاشتراك؟</strong></p>
+            <ul style="text-align: right; color: #666;">
+              <li>لن تتمكن من الوصول إلى النظام</li>
+              <li>سيتم إيقاف جميع الخدمات مؤقتاً</li>
+              <li>ستفقد الوصول إلى التقارير والفواتير</li>
+            </ul>
+            
+            <div style="text-align: center;">
+              <a href="${process.env.FRONTEND_URL}/subscription" class="button">
+                تجديد الاشتراك الآن
+              </a>
+            </div>
+          </div>
+          <div class="footer">
+            <p>© 2025 فلترة - نظام إدارة الفلاتر والتكييفات</p>
+            <p>للاستفسارات: ${
+              process.env.SUPPORT_EMAIL || "support@faltarah.com"
+            }</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Expiry warning email sent to ${email}`);
+  } catch (error) {
+    console.error("❌ Error sending expiry warning email:", error);
+    throw error;
+  }
+};
+
+/**
+ * إرسال بريد انتهاء الاشتراك
+ */
+export const sendSubscriptionExpiredEmail = async (email, companyName) => {
+  const mailOptions = {
+    from: `"فلترة - نظام إدارة الفلاتر" <${process.env.EMAIL_FROM}>`,
+    to: email,
+    subject: "🔴 انتهى اشتراكك - يرجى التجديد",
+    html: `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+          }
+          .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 24px;
+          }
+          .content {
+            padding: 30px;
+            text-align: right;
+          }
+          .expired-icon {
+            text-align: center;
+            font-size: 60px;
+            margin: 20px 0;
+          }
+          .expired-box {
+            background: #f8d7da;
+            border-right: 4px solid #dc3545;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+          }
+          .expired-box h3 {
+            margin-top: 0;
+            color: #721c24;
+          }
+          .expired-box p {
+            color: #721c24;
+            margin: 10px 0;
+          }
+          .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            color: white;
+            padding: 15px 40px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+            font-size: 16px;
+          }
+          .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🔴 انتهى اشتراكك</h1>
+          </div>
+          <div class="content">
+            <div class="expired-icon">⛔</div>
+            
+            <p>عزيزي <strong>${companyName}</strong>،</p>
+            
+            <div class="expired-box">
+              <h3>انتهى اشتراكك في نظام فلترة</h3>
+              <p>تم إيقاف وصولك إلى النظام مؤقتاً حتى يتم تجديد الاشتراك.</p>
+            </div>
+            
+            <p><strong>لاستعادة الوصول:</strong></p>
+            <ol style="text-align: right; color: #666;">
+              <li>قم بزيارة صفحة الاشتراكات</li>
+              <li>اختر الباقة المناسبة لك</li>
+              <li>أكمل عملية الدفع</li>
+              <li>سيتم تفعيل حسابك فوراً</li>
+            </ol>
+            
+            <p style="background: #e7f3ff; padding: 15px; border-radius: 5px; color: #004085;">
+              💡 <strong>نصيحة:</strong> الباقات السنوية توفر لك حتى 25% من التكلفة!
+            </p>
+            
+            <div style="text-align: center;">
+              <a href="${process.env.FRONTEND_URL}/subscription" class="button">
+                تجديد الاشتراك الآن
+              </a>
+            </div>
+            
+            <p style="color: #666; font-size: 14px; margin-top: 30px;">
+              نحن هنا لمساعدتك! تواصل معنا إذا كان لديك أي استفسار.
+            </p>
+          </div>
+          <div class="footer">
+            <p>© 2025 فلترة - نظام إدارة الفلاتر والتكييفات</p>
+            <p>الدعم الفني: ${
+              process.env.SUPPORT_EMAIL || "support@faltarah.com"
+            } | ${process.env.SUPPORT_PHONE || "01XXXXXXXXX"}</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Subscription expired email sent to ${email}`);
+  } catch (error) {
+    console.error("❌ Error sending subscription expired email:", error);
+    throw error;
+  }
+};

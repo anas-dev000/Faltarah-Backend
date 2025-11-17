@@ -451,6 +451,7 @@ async function main() {
         technicianId: employee2.id,
         companyId: company1.id,
         totalAmount: 2800.0,
+        discountAmountType: "Fixed",
         discountAmount: 200.0,
         saleType: "Installment",
         maintenancePeriod: 24,

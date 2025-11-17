@@ -1,5 +1,6 @@
 import { buildApp } from "./src/app.js";
 import { config } from "./src/config/env.js";
+import { startSubscriptionJobs } from "./src/shared/jobs/subscription.jobs.js"; // NEW
 
 async function start() {
   try {
@@ -9,6 +10,9 @@ async function start() {
       port: config.port,
       host: "0.0.0.0",
     });
+
+    // Start cron jobs
+    startSubscriptionJobs(); // NEW
 
     await app.ready();
     app.log.info(`🚀 Server listening on port ${config.port}`);
