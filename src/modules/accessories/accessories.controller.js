@@ -22,16 +22,22 @@ export const getAllAccessories = async (request, reply) => {
     status: request.query.status,
   };
 
-  const accessories = await accessoriesService.getAllAccessories(
+  const pagination = {
+    page: request.query.page || 1,
+    limit: request.query.limit || 10,
+  };
+
+  const result = await accessoriesService.getAllAccessories(
     request.server.prisma,
     currentUser,
-    filters
+    filters,
+    pagination
   );
 
   return reply.send({
     success: true,
-    data: accessories,
-    count: accessories.length,
+    data: result.data,
+    pagination: result.pagination,
   });
 };
 

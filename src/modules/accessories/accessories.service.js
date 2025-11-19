@@ -8,13 +8,11 @@ import { AppError } from "../../shared/errors/AppError.js";
 /**
  * Get all accessories with filters
  */
-export const getAllAccessories = async (prisma, currentUser, filters = {}) => {
+export const getAllAccessories = async (prisma, currentUser, filters = {}, pagination = {}) => {
   const { role, companyId } = currentUser;
-
-  // Developer can see all accessories
   const targetCompanyId = role === "developer" ? null : companyId;
 
-  return await accessoriesRepository.findAll(prisma, targetCompanyId, filters);
+  return await accessoriesRepository.findAll(prisma, targetCompanyId, filters, pagination);
 };
 
 /**

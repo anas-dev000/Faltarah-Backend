@@ -23,16 +23,22 @@ export const getAllProducts = async (request, reply) => {
     status: request.query.status,
   };
 
-  const products = await productsService.getAllProducts(
+  const pagination = {
+    page: request.query.page || 1,
+    limit: request.query.limit || 10,
+  };
+
+  const result = await productsService.getAllProducts(
     request.server.prisma,
     currentUser,
-    filters
+    filters,
+    pagination
   );
 
   return reply.send({
     success: true,
-    data: products,
-    count: products.length,
+    data: result.data,
+    pagination: result.pagination,
   });
 };
 
