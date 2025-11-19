@@ -27,6 +27,7 @@ import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import installmentPaymentsRoutes from "./modules/installmentPayments/installmentPayments.routes.js";
 import pdfRoutes from "./modules/pdf/pdf.routes.js";
 import subscriptionRoutes from "./modules/subscriptions/subscriptions.routes.js";
+import aiQueryRoutes from "./modules/aiQuery/aiQuery.routes.js";
 
 export async function buildApp(opts = {}) {
   const app = Fastify({
@@ -128,6 +129,7 @@ export async function buildApp(opts = {}) {
   await app.register(serviceRoutes, { prefix: "/api/services" });
   await app.register(dashboardRoutes, { prefix: "/api/dashboard" });
   await app.register(pdfRoutes, { prefix: "/api/pdf" });
+  await app.register(aiQueryRoutes, { prefix: "/api/ai-query" });
 
   // --- Error Handler ---
   app.setErrorHandler(errorHandler);
