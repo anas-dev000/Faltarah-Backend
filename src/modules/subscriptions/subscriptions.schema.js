@@ -58,14 +58,6 @@ export const createCheckoutSchema = {
 export const validateCheckoutRequest = (request, reply, done) => {
   const { planId, companyId } = request.body;
 
-  console.log("🔍 Validating checkout request:", {
-    planId,
-    planIdType: typeof planId,
-    companyId,
-    companyIdType: typeof companyId,
-    rawBody: request.body,
-  });
-
   const errors = {};
 
   // Validate planId

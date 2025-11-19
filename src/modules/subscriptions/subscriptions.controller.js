@@ -54,13 +54,6 @@ export const getCompanyStatus = async (request, reply) => {
       companyId
     );
 
-    console.log("📊 Company Status:", {
-      companyId,
-      status: status.status,
-      daysRemaining: status.daysRemaining,
-      expiryDate: status.expiryDate,
-    });
-
     // ✅ Return with proper structure
     return reply.send({
       success: true,
@@ -81,18 +74,6 @@ export const getCompanyStatus = async (request, reply) => {
 export const createCheckoutSession = async (request, reply) => {
   const currentUser = request.user;
   const { planId, companyId: requestCompanyId } = request.body;
-
-  // ✅ Detailed validation logging
-  console.log("📥 Checkout request:", {
-    planId,
-    planIdType: typeof planId,
-    requestCompanyId,
-    currentUser: {
-      id: currentUser.id,
-      role: currentUser.role,
-      companyId: currentUser.companyId,
-    },
-  });
 
   // ✅ Strict validation
   if (!planId) {
@@ -144,7 +125,6 @@ export const createCheckoutSession = async (request, reply) => {
   }
 
   try {
-    console.log("🚀 Creating checkout session:", { companyId, planId });
 
     const result = await subService.createCheckoutSession(
       request.server.prisma,
@@ -153,10 +133,6 @@ export const createCheckoutSession = async (request, reply) => {
       currentUser
     );
 
-    console.log("✅ Checkout session created:", {
-      sessionId: result.sessionId,
-      sessionUrl: result.sessionUrl?.substring(0, 50) + "...",
-    });
 
     // ✅ Return with proper structure
     return reply.send({
@@ -177,31 +153,67 @@ export const createCheckoutSession = async (request, reply) => {
 // ==========================================
 export const handleStripeWebhook = async (request, reply) => {
   const sig = request.headers["stripe-signature"];
+  // ✅ Use rawBody instead of body
+  const rawBody = request.rawBody || request.body;
 
   let event;
 
   try {
-    event = stripe.webhooks.constructEvent(
-      request.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+    // ✅ For development: Increase tolerance window
+    const webhookOptions = {
+      tolerance: 600, // 10 minutes tolerance for development
+    };
+
+    if (config.nodeEnv === "development") {
+      event = stripe.webhooks.constructEvent(
+        rawBody,
+        sig,
+        config.stripe.webhookSecret,
+        webhookOptions // Pass options for development
+      );
+    } else {
+      event = stripe.webhooks.constructEvent(
+        rawBody,
+        sig,
+        config.stripe.webhookSecret
+      );
+    }
+
   } catch (err) {
+    console.error("❌ Webhook verification failed:", {
+      error: err.message,
+      errorType: err.type,
+      signature: sig?.substring(0, 50) + "...",
+      webhookSecret: config.stripe.webhookSecret?.substring(0, 15) + "...",
+      bodyPreview:
+        typeof rawBody === "string"
+          ? rawBody.substring(0, 100) + "..."
+          : "Not a string",
+    });
     return reply.status(400).send({
       success: false,
       error: `Webhook Error: ${err.message}`,
     });
   }
 
-  const result = await subService.handleStripeWebhook(
-    request.server.prisma,
-    event
-  );
+  // Process the event
+  try {
+    const result = await subService.handleStripeWebhook(
+      request.server.prisma,
+      event
+    );
 
-  return reply.send({
-    success: true,
-    data: result,
-  });
+    return reply.send({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error("❌ Webhook processing error:", error);
+    return reply.status(500).send({
+      success: false,
+      error: error.message,
+    });
+  }
 };
 
 // ==========================================
@@ -286,14 +298,6 @@ export const getVerificationStatus = async (request, reply) => {
       request.server.prisma,
       currentUser.companyId
     );
-
-    console.log("🔍 Verification Status Check:", {
-      companyId: currentUser.companyId,
-      status: status.status,
-      daysRemaining: status.daysRemaining,
-      expiryDate: status.expiryDate,
-      hasCurrentSubscription: !!status.currentSubscription,
-    });
 
     const isExpired = status.status === "expired";
     const needsSubscription = isExpired;

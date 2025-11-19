@@ -69,7 +69,7 @@ export const startSubscriptionJobs = () => {
 };
 
 /**
- * إيقاف جميع Jobs
+ * Stop all Jobs
  */
 export const stopSubscriptionJobs = () => {
   checkExpiredSubscriptions.stop();

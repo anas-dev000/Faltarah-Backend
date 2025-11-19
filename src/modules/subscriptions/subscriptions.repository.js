@@ -33,11 +33,6 @@ export const findPlanById = async (prisma, id) => {
 export const findActiveSubscription = async (prisma, companyId) => {
   const now = new Date();
 
-  console.log("🔍 Finding active subscription:", {
-    companyId,
-    now: now.toISOString(),
-  });
-
   const subscription = await prisma.subscription.findFirst({
     where: {
       companyId,
@@ -56,17 +51,7 @@ export const findActiveSubscription = async (prisma, companyId) => {
     orderBy: { endDate: "desc" }, //  Get the latest one
   });
 
-  if (subscription) {
-    console.log("✅ Found active subscription:", {
-      id: subscription.id,
-      planName: subscription.plan.name,
-      startDate: subscription.startDate,
-      endDate: subscription.endDate,
-      status: subscription.status,
-    });
-  } else {
-    console.log("❌ No active subscription found");
-  }
+  if (!subscription) return null;
 
   return subscription;
 };
@@ -82,7 +67,6 @@ export const findCompanySubscriptions = async (prisma, companyId) => {
 };
 
 export const createSubscription = async (prisma, data) => {
-  console.log("📝 Creating subscription:", data);
   return prisma.subscription.create({
     data,
     include: {

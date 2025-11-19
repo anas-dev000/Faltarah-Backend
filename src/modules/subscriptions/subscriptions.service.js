@@ -70,15 +70,7 @@ export const getCompanySubscriptionStatus = async (prisma, companyId) => {
     const timeDiff = expiryDate.getTime() - now.getTime();
     daysRemaining = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
 
-    console.log("📊 Subscription Calculation:", {
-      companyId,
-      now: now.toISOString(),
-      expiryDate: expiryDate.toISOString(),
-      timeDiff,
-      daysRemaining,
-      subscriptionStatus: activeSubscription.status,
-    });
-
+    // ✅ Calculate status
     // ONLY set status to "active" if:
     // 1. endDate is in the future
     // 2. daysRemaining > 0
@@ -94,14 +86,6 @@ export const getCompanySubscriptionStatus = async (prisma, companyId) => {
       daysRemaining = 0;
     }
   }
-
-  console.log("✅ Final Status:", {
-    companyId,
-    status,
-    daysRemaining,
-    expiryDate,
-    hasActiveSubscription: !!activeSubscription,
-  });
 
   return {
     company: {
@@ -215,13 +199,10 @@ export const createCheckoutSession = async (
 // ==========================================
 
 export const handleStripeWebhook = async (prisma, event) => {
+
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
 
-    const invoice = await subRepo.findInvoiceByStripeSession(
-      prisma,
-      session.id
-    );
 
     if (!invoice) {
       throw new AppError("Invoice not found for this session", 404);

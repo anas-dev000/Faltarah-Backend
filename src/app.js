@@ -43,9 +43,12 @@ export async function buildApp(opts = {}) {
             }
           : undefined,
     },
+    bodyLimit: 1048576 * 2, // 2MB
+    trustProxy: true,
     ...opts,
   });
 
+  // Register plugins
   await app.register(corsPlugin);
   await app.register(helmetPlugin);
 
@@ -63,6 +66,7 @@ export async function buildApp(opts = {}) {
   });
 
   // NEW: Register raw body plugin for Stripe webhooks
+  // Register raw body for webhooks
   await app.register(fastifyRawBody, {
     field: "rawBody",
     global: false,
@@ -109,6 +113,7 @@ export async function buildApp(opts = {}) {
   await app.register(authRoutes, { prefix: "/api/auth" });
   await app.register(userRoutes, { prefix: "/api/users" });
   await app.register(companyRoutes, { prefix: "/api/companies" });
+  await app.register(subscriptionRoutes, { prefix: "/api/subscriptions" });
   await app.register(productRoutes, { prefix: "/api/products" });
   await app.register(accessoryRoutes, { prefix: "/api/accessories" });
   await app.register(suppliersRoutes, { prefix: "/api/suppliers" });
@@ -123,7 +128,6 @@ export async function buildApp(opts = {}) {
   await app.register(serviceRoutes, { prefix: "/api/services" });
   await app.register(dashboardRoutes, { prefix: "/api/dashboard" });
   await app.register(pdfRoutes, { prefix: "/api/pdf" });
-  await app.register(subscriptionRoutes, { prefix: "/api/subscriptions" });
 
   // --- Error Handler ---
   app.setErrorHandler(errorHandler);
