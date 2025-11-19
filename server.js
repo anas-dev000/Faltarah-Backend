@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { buildApp } from "./src/app.js";
 import { config } from "./src/config/env.js";
 import { startSubscriptionJobs } from "./src/shared/jobs/subscription.jobs.js"; // NEW

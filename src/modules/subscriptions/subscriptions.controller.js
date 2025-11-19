@@ -4,8 +4,9 @@
 
 import * as subService from "./subscriptions.service.js";
 import Stripe from "stripe";
+import { config } from "../../config/env.js";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = new Stripe(config.stripe.secretKey);
 
 // ==========================================
 // Get All Plans
@@ -41,23 +42,37 @@ export const getCompanyStatus = async (request, reply) => {
   const currentUser = request.user;
   let companyId;
 
-  // إذا كان developer وأرسل companyId في query
   if (currentUser.role === "developer" && request.query.companyId) {
     companyId = Number(request.query.companyId);
   } else {
-    // Manager أو Employee يحصل على بيانات شركته فقط
     companyId = currentUser.companyId;
   }
 
-  const status = await subService.getCompanySubscriptionStatus(
-    request.server.prisma,
-    companyId
-  );
+  try {
+    const status = await subService.getCompanySubscriptionStatus(
+      request.server.prisma,
+      companyId
+    );
 
-  return reply.send({
-    success: true,
-    data: status,
-  });
+    console.log("📊 Company Status:", {
+      companyId,
+      status: status.status,
+      daysRemaining: status.daysRemaining,
+      expiryDate: status.expiryDate,
+    });
+
+    // ✅ Return with proper structure
+    return reply.send({
+      success: true,
+      data: status,
+    });
+  } catch (error) {
+    console.error("❌ Status error:", error);
+    return reply.status(error.statusCode || 500).send({
+      success: false,
+      error: error.message,
+    });
+  }
 };
 
 // ==========================================
@@ -65,29 +80,96 @@ export const getCompanyStatus = async (request, reply) => {
 // ==========================================
 export const createCheckoutSession = async (request, reply) => {
   const currentUser = request.user;
-  const { planId } = request.body;
+  const { planId, companyId: requestCompanyId } = request.body;
+
+  // ✅ Detailed validation logging
+  console.log("📥 Checkout request:", {
+    planId,
+    planIdType: typeof planId,
+    requestCompanyId,
+    currentUser: {
+      id: currentUser.id,
+      role: currentUser.role,
+      companyId: currentUser.companyId,
+    },
+  });
+
+  // ✅ Strict validation
+  if (!planId) {
+    return reply.status(400).send({
+      success: false,
+      error: "Validation Error",
+      details: { planId: "Plan ID is required" },
+    });
+  }
+
+  if (typeof planId !== "number") {
+    return reply.status(400).send({
+      success: false,
+      error: "Validation Error",
+      details: {
+        planId: `Plan ID must be a number, received ${typeof planId}`,
+      },
+    });
+  }
+
+  if (planId <= 0) {
+    return reply.status(400).send({
+      success: false,
+      error: "Validation Error",
+      details: { planId: "Plan ID must be positive" },
+    });
+  }
 
   let companyId;
 
-  // Developer يمكنه إنشاء اشتراك لأي شركة
-  if (currentUser.role === "developer" && request.body.companyId) {
-    companyId = Number(request.body.companyId);
-  } else {
-    // Manager يشتري لشركته فقط
+  // Developer can create for any company
+  if (currentUser.role === "developer" && requestCompanyId) {
+    companyId = Number(requestCompanyId);
+  } else if (currentUser.role === "manager") {
+    // Manager creates for their own company
     companyId = currentUser.companyId;
+  } else {
+    return reply.status(403).send({
+      success: false,
+      error: "Only managers and developers can create subscriptions",
+    });
   }
 
-  const result = await subService.createCheckoutSession(
-    request.server.prisma,
-    companyId,
-    Number(planId),
-    currentUser
-  );
+  if (!companyId) {
+    return reply.status(400).send({
+      success: false,
+      error: "Company ID is required",
+    });
+  }
 
-  return reply.send({
-    success: true,
-    data: result,
-  });
+  try {
+    console.log("🚀 Creating checkout session:", { companyId, planId });
+
+    const result = await subService.createCheckoutSession(
+      request.server.prisma,
+      companyId,
+      Number(planId),
+      currentUser
+    );
+
+    console.log("✅ Checkout session created:", {
+      sessionId: result.sessionId,
+      sessionUrl: result.sessionUrl?.substring(0, 50) + "...",
+    });
+
+    // ✅ Return with proper structure
+    return reply.send({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error("❌ Checkout error:", error);
+    return reply.status(error.statusCode || 500).send({
+      success: false,
+      error: error.message || "Failed to create checkout session",
+    });
+  }
 };
 
 // ==========================================
@@ -187,29 +269,52 @@ export const markAlertsRead = async (request, reply) => {
 export const getVerificationStatus = async (request, reply) => {
   const currentUser = request.user;
 
-  // Developer لا يحتاج للتحقق من الاشتراك
+  // ✅ Developer never needs subscription
   if (currentUser.role === "developer") {
     return reply.send({
       success: true,
-      needsSubscription: false,
-      isExpired: false,
+      data: {
+        needsSubscription: false,
+        isExpired: false,
+        hasActiveSubscription: true,
+      },
     });
   }
 
-  const status = await subService.getCompanySubscriptionStatus(
-    request.server.prisma,
-    currentUser.companyId
-  );
+  try {
+    const status = await subService.getCompanySubscriptionStatus(
+      request.server.prisma,
+      currentUser.companyId
+    );
 
-  const needsSubscription = status.status === "expired";
-  const daysRemaining = status.daysRemaining;
+    console.log("🔍 Verification Status Check:", {
+      companyId: currentUser.companyId,
+      status: status.status,
+      daysRemaining: status.daysRemaining,
+      expiryDate: status.expiryDate,
+      hasCurrentSubscription: !!status.currentSubscription,
+    });
 
-  return reply.send({
-    success: true,
-    needsSubscription,
-    isExpired: needsSubscription,
-    daysRemaining,
-    expiryDate: status.expiryDate,
-    currentSubscription: status.currentSubscription,
-  });
+    const isExpired = status.status === "expired";
+    const needsSubscription = isExpired;
+
+    return reply.send({
+      success: true,
+      data: {
+        needsSubscription,
+        status: status.status,
+        isExpired,
+        daysRemaining: status.daysRemaining,
+        expiryDate: status.expiryDate,
+        currentSubscription: status.currentSubscription,
+        hasActiveSubscription: !isExpired,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Verification error:", error);
+    return reply.status(error.statusCode || 500).send({
+      success: false,
+      error: error.message,
+    });
+  }
 };

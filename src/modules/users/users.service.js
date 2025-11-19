@@ -254,8 +254,8 @@ export const deleteExistingUser = async (prisma, id, currentUser) => {
 export const loginUser = async (prisma, email, password) => {
   const user = await userRepo.findUserByEmail(prisma, email);
 
-  if (!user) {
-    throw new AppError("Invalid credentials", 401);
+  if (!user || !(await comparePassword(password, user.passwordHash))) {
+    throw new AppError("Invalid email or password", 401);
   }
 
   // Checking user status
@@ -268,20 +268,16 @@ export const loginUser = async (prisma, email, password) => {
 
   // ✅ CHANGED: Check subscription but don't block login
   let subscriptionExpired = false;
-  if (user.role !== "developer") {
-    const company = user.company;
-    if (
-      company.subscriptionExpiryDate &&
-      new Date(company.subscriptionExpiryDate) < new Date()
-    ) {
-      // Instead of throwing error, mark subscription as expired
-      subscriptionExpired = true;
-    }
-  }
-
-  const isValid = await comparePassword(password, user.passwordHash);
-  if (!isValid) {
-    throw new AppError("Invalid credentials", 401);
+  if (user.role !== "developer" && user.companyId) {
+    const now = new Date();
+    const subscription = await prisma.subscription.findFirst({
+      where: {
+        companyId: user.companyId,
+        endDate: { gte: now.toISOString() },
+      },
+      orderBy: { endDate: "desc" },
+    });
+    subscriptionExpired = !subscription;
   }
 
   const token = generateToken({

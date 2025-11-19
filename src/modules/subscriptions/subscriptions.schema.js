@@ -7,9 +7,23 @@ export const createCheckoutSchema = {
     type: "number",
     required: true,
     validate: (value) => {
-      if (typeof value !== "number" || value <= 0) {
-        throw new Error("Valid plan ID is required");
+      // ✅ More detailed validation
+      if (value === undefined || value === null) {
+        throw new Error("Plan ID is required");
       }
+
+      if (typeof value !== "number") {
+        throw new Error(`Plan ID must be a number, received ${typeof value}`);
+      }
+
+      if (value <= 0) {
+        throw new Error("Plan ID must be positive");
+      }
+
+      if (!Number.isInteger(value)) {
+        throw new Error("Plan ID must be an integer");
+      }
+
       return true;
     },
   },
@@ -17,12 +31,69 @@ export const createCheckoutSchema = {
     type: "number",
     required: false,
     validate: (value) => {
-      if (value !== undefined && (typeof value !== "number" || value <= 0)) {
-        throw new Error("Valid company ID is required");
+      if (value === undefined || value === null) {
+        return true; // Optional field
       }
+
+      if (typeof value !== "number") {
+        throw new Error(
+          `Company ID must be a number, received ${typeof value}`
+        );
+      }
+
+      if (value <= 0) {
+        throw new Error("Company ID must be positive");
+      }
+
+      if (!Number.isInteger(value)) {
+        throw new Error("Company ID must be an integer");
+      }
+
       return true;
     },
   },
+};
+
+// ✅ Enhanced validation middleware
+export const validateCheckoutRequest = (request, reply, done) => {
+  const { planId, companyId } = request.body;
+
+  console.log("🔍 Validating checkout request:", {
+    planId,
+    planIdType: typeof planId,
+    companyId,
+    companyIdType: typeof companyId,
+    rawBody: request.body,
+  });
+
+  const errors = {};
+
+  // Validate planId
+  try {
+    createCheckoutSchema.planId.validate(planId);
+  } catch (error) {
+    errors.planId = error.message;
+  }
+
+  // Validate companyId if provided
+  if (companyId !== undefined) {
+    try {
+      createCheckoutSchema.companyId.validate(companyId);
+    } catch (error) {
+      errors.companyId = error.message;
+    }
+  }
+
+  if (Object.keys(errors).length > 0) {
+    console.error("❌ Validation errors:", errors);
+    return reply.status(400).send({
+      success: false,
+      error: "Validation Error",
+      details: errors,
+    });
+  }
+
+  done();
 };
 
 export const processCashPaymentSchema = {

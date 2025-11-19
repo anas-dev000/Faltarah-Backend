@@ -6,13 +6,14 @@ import * as subRepo from "./subscriptions.repository.js";
 import * as companyRepo from "../companies/companies.repository.js";
 import { AppError } from "../../shared/errors/AppError.js";
 import Stripe from "stripe";
+import { config } from "../../config/env.js";
 import {
   sendSubscriptionConfirmationEmail,
   sendSubscriptionExpiryWarningEmail,
   sendSubscriptionExpiredEmail,
 } from "../../shared/utils/email.service.js";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = new Stripe(config.stripe.secretKey);
 
 // ==========================================
 // Subscription Plans
@@ -47,10 +48,12 @@ export const getCompanySubscriptionStatus = async (prisma, companyId) => {
     prisma,
     companyId
   );
+
   const allSubscriptions = await subRepo.findCompanySubscriptions(
     prisma,
     companyId
   );
+
   const invoices = await subRepo.findCompanyInvoices(prisma, companyId);
   const alerts = await subRepo.findCompanyAlerts(prisma, companyId);
 
@@ -59,11 +62,46 @@ export const getCompanySubscriptionStatus = async (prisma, companyId) => {
   let expiryDate = null;
 
   if (activeSubscription) {
-    status = "active";
-    expiryDate = activeSubscription.endDate;
+    // Check if there's a VALID active subscription
+    expiryDate = new Date(activeSubscription.endDate);
     const now = new Date();
-    daysRemaining = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+
+    // ✅ Calculate days remaining
+    const timeDiff = expiryDate.getTime() - now.getTime();
+    daysRemaining = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+
+    console.log("📊 Subscription Calculation:", {
+      companyId,
+      now: now.toISOString(),
+      expiryDate: expiryDate.toISOString(),
+      timeDiff,
+      daysRemaining,
+      subscriptionStatus: activeSubscription.status,
+    });
+
+    // ONLY set status to "active" if:
+    // 1. endDate is in the future
+    // 2. daysRemaining > 0
+    // 3. subscription status is "active"
+    if (
+      daysRemaining > 0 &&
+      expiryDate > now &&
+      activeSubscription.status === "active"
+    ) {
+      status = "active";
+    } else {
+      status = "expired";
+      daysRemaining = 0;
+    }
   }
+
+  console.log("✅ Final Status:", {
+    companyId,
+    status,
+    daysRemaining,
+    expiryDate,
+    hasActiveSubscription: !!activeSubscription,
+  });
 
   return {
     company: {
@@ -101,6 +139,14 @@ export const createCheckoutSession = async (
     throw new AppError("You can only purchase for your own company", 403);
   }
 
+  if (!companyId || typeof companyId !== "number") {
+    throw new AppError("Invalid company ID", 400);
+  }
+
+  if (!planId || typeof planId !== "number") {
+    throw new AppError("Invalid plan ID", 400);
+  }
+
   const company = await companyRepo.findCompanyById(prisma, companyId);
   if (!company) {
     throw new AppError("Company not found", 404);
@@ -121,43 +167,47 @@ export const createCheckoutSession = async (
     paymentStatus: "pending",
   });
 
-  // إنشاء Stripe Checkout Session
-  const session = await stripe.checkout.sessions.create({
-    payment_method_types: ["card"],
-    line_items: [
-      {
-        price_data: {
-          currency: "egp",
-          product_data: {
-            name: `${plan.nameAr} - ${plan.name}`,
-            description: plan.descriptionAr || plan.description,
+  // Create Stripe Checkout Session
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: (config.stripe.currency || "egp").toLowerCase(),
+            product_data: {
+              name: `${plan.nameAr} - ${plan.name}`,
+              description: plan.descriptionAr || plan.description,
+            },
+            unit_amount: Math.round(plan.price * 100),
           },
-          unit_amount: Math.round(plan.price * 100), // Convert to cents
+          quantity: 1,
         },
-        quantity: 1,
+      ],
+      mode: "payment",
+      success_url: `${config.frontend.url}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${config.frontend.url}/subscription/cancel`,
+      client_reference_id: invoice.id.toString(),
+      metadata: {
+        companyId: companyId.toString(),
+        planId: planId.toString(),
+        invoiceId: invoice.id.toString(),
       },
-    ],
-    mode: "payment",
-    success_url: `${process.env.FRONTEND_URL}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.FRONTEND_URL}/subscription/cancel`,
-    client_reference_id: invoice.id.toString(),
-    metadata: {
-      companyId: companyId.toString(),
-      planId: planId.toString(),
-      invoiceId: invoice.id.toString(),
-    },
-  });
+    });
 
-  // تحديث الفاتورة بـ session ID
-  await subRepo.updateInvoicePaymentStatus(prisma, invoice.id, {
-    stripeSessionId: session.id,
-  });
+    await subRepo.updateInvoicePaymentStatus(prisma, invoice.id, {
+      stripeSessionId: session.id,
+    });
 
-  return {
-    sessionId: session.id,
-    sessionUrl: session.url,
-    invoice,
-  };
+    return {
+      sessionId: session.id,
+      sessionUrl: session.url,
+      invoice,
+    };
+  } catch (error) {
+    console.error("Stripe error:", error);
+    throw new AppError(error.message || "Failed to create Stripe session", 500);
+  }
 };
 
 // ==========================================

@@ -4,8 +4,8 @@
 
 import * as subController from "./subscriptions.controller.js";
 import {
-  createCheckoutSchema,
   processCashPaymentSchema,
+  validateCheckoutRequest,
   cancelSubscriptionSchema,
   markAlertsReadSchema,
 } from "./subscriptions.schema.js";
@@ -74,7 +74,7 @@ export default async function subscriptionRoutes(fastify) {
     preHandler: [
       authenticate,
       authorize(["manager", "developer"]),
-      validateBody(createCheckoutSchema),
+      validateCheckoutRequest, // Custom validation
     ],
     handler: subController.createCheckoutSession,
   });

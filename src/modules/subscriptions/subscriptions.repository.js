@@ -23,13 +23,27 @@ export const findPlanById = async (prisma, id) => {
 // Company Subscriptions
 // ==========================================
 
+/**
+ * FIXED: Find active subscription
+ * Returns subscription where:
+ * 1. companyId matches
+ * 2. status = "active"
+ * 3. endDate >= NOW (not expired yet)
+ */
 export const findActiveSubscription = async (prisma, companyId) => {
-  return prisma.subscription.findFirst({
+  const now = new Date();
+
+  console.log("🔍 Finding active subscription:", {
+    companyId,
+    now: now.toISOString(),
+  });
+
+  const subscription = await prisma.subscription.findFirst({
     where: {
       companyId,
       status: "active",
       endDate: {
-        gte: new Date(),
+        gte: now,
       },
     },
     include: {
@@ -39,8 +53,22 @@ export const findActiveSubscription = async (prisma, companyId) => {
         orderBy: { sentAt: "desc" },
       },
     },
-    orderBy: { endDate: "desc" },
+    orderBy: { endDate: "desc" }, //  Get the latest one
   });
+
+  if (subscription) {
+    console.log("✅ Found active subscription:", {
+      id: subscription.id,
+      planName: subscription.plan.name,
+      startDate: subscription.startDate,
+      endDate: subscription.endDate,
+      status: subscription.status,
+    });
+  } else {
+    console.log("❌ No active subscription found");
+  }
+
+  return subscription;
 };
 
 export const findCompanySubscriptions = async (prisma, companyId) => {
@@ -54,6 +82,7 @@ export const findCompanySubscriptions = async (prisma, companyId) => {
 };
 
 export const createSubscription = async (prisma, data) => {
+  console.log("📝 Creating subscription:", data);
   return prisma.subscription.create({
     data,
     include: {
