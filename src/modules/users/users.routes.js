@@ -63,10 +63,19 @@ export default async function userRoutes(fastify) {
   // ========================================
 
   // Get all users (Manager, Developer only)
-  fastify.get("/", {
-    preHandler: [authenticate, authorize(["manager", "developer"])],
-    handler: userController.getAll,
-  });
+ fastify.get("/", {
+  preHandler: [authenticate, authorize(["manager", "developer"])],
+  schema: {
+    querystring: {
+      type: "object",
+      properties: {
+        page: { type: "integer", minimum: 1 },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+    },
+  },
+  handler: userController.getAll,
+});
 
   // Get a user by ID (all users - with permission checks in the service)
   fastify.get("/:id", {

@@ -12,17 +12,17 @@ import { AppError } from "../../shared/errors/AppError.js";
  * @param {Object} prisma - Prisma client
  * @param {Object} currentUser - Current token user
  */
-export const getAllUsers = async (prisma, currentUser) => {
+export const getAllUsers = async (prisma, currentUser, pagination = {}) => {
   const { role, companyId } = currentUser;
 
   // Developer sees all users
   if (role === "developer") {
-    return userRepo.findAllUsers(prisma, null);
+    return userRepo.findAllUsers(prisma, null, pagination);
   }
 
   // Manager can only see his company's users
   if (role === "manager") {
-    return userRepo.findAllUsers(prisma, companyId);
+    return userRepo.findAllUsers(prisma, companyId, pagination);
   }
 
   // Employee cannot see the user list
