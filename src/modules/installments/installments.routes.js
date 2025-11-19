@@ -19,28 +19,45 @@ export default async function installmentsRoutes(fastify, options) {
   // ==============================================
 
   // GET /api/installments - Get all installments
-  fastify.get(
-    "/",
-    {
-      preHandler: [authenticate, checkCompanyAccess()],
-      schema: {
-        description: "Get all installments",
-        tags: ["Installments"],
-        response: {
-          200: {
-            description: "Installments list retrieved successfully",
-            type: "object",
-            properties: {
-              success: { type: "boolean" },
-              data: { type: "array" },
-              count: { type: "number" },
+ fastify.get(
+  "/",
+  {
+    preHandler: [authenticate, checkCompanyAccess()],
+    schema: {
+      description: "Get all installments with pagination",
+      tags: ["Installments"],
+      querystring: {
+        type: "object",
+        properties: {
+          page: { type: "integer", minimum: 1 },
+          limit: { type: "integer", minimum: 1, maximum: 100 },
+        },
+      },
+      response: {
+        200: {
+          description: "Installments list retrieved successfully",
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            data: { type: "array" },
+            pagination: {
+              type: "object",
+              properties: {
+                page: { type: "number" },
+                limit: { type: "number" },
+                total: { type: "number" },
+                totalPages: { type: "number" },
+                hasNext: { type: "boolean" },
+                hasPrev: { type: "boolean" },
+              },
             },
           },
         },
       },
     },
-    getAllInstallments
-  );
+  },
+  getAllInstallments
+);
 
   // GET /api/installments/:id - Get installment by ID
   fastify.get(

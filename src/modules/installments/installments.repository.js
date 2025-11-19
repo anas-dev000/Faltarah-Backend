@@ -10,7 +10,7 @@
 /**
  * Find all installments with optional company filter
  */
-export async function findAll(prisma, companyId = null) {
+export async function findAll(prisma, companyId = null, pagination = {}) {
   const where = {};
 
   if (companyId !== null) {
@@ -19,7 +19,18 @@ export async function findAll(prisma, companyId = null) {
     };
   }
 
-  return await prisma.installment.findMany({
+  // Pagination
+  const page = parseInt(pagination.page) || 1;
+  const limit = parseInt(pagination.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  // Get total count for pagination
+  const total = await prisma.installment.count({
+    where,
+  });
+
+  // Get paginated data
+  const installments = await prisma.installment.findMany({
     where,
     include: {
       invoice: {
@@ -49,7 +60,21 @@ export async function findAll(prisma, companyId = null) {
     orderBy: {
       createdAt: "desc",
     },
+    skip,
+    take: limit,
   });
+
+  return {
+    data: installments,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasNext: page < Math.ceil(total / limit),
+      hasPrev: page > 1,
+    }
+  };
 }
 
 /**

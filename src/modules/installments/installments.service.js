@@ -9,7 +9,7 @@ import { ERROR_CODES } from "../../shared/errors/errorCodes.js";
 /**
  * Get all installments based on user role
  */
-export async function getAllInstallments(prisma, currentUser) {
+export async function getAllInstallments(prisma, currentUser, pagination = {}) {
   const { role, companyId } = currentUser;
 
   let targetCompanyId = null;
@@ -24,7 +24,7 @@ export async function getAllInstallments(prisma, currentUser) {
     targetCompanyId = companyId;
   }
 
-  return await installmentsRepository.findAll(prisma, targetCompanyId);
+  return await installmentsRepository.findAll(prisma, targetCompanyId, pagination);
 }
 
 /**
