@@ -26,40 +26,53 @@ export default async function invoicesRoutes(fastify, options) {
 
   // GET /api/invoices - Get all invoices
   fastify.get(
-    "/",
-    {
-      preHandler: [authenticate, checkCompanyAccess()],
-      schema: {
-        description: "Get all invoices with optional filters",
-        tags: ["Invoices"],
-        querystring: {
-          type: "object",
-          properties: {
-            saleType: {
-              type: "string",
-              enum: ["Cash", "Installment"],
-              description: "Filter by sale type",
-            },
-            dateFrom: {
-              type: "string",
-              format: "date",
-              description: "Filter from date",
-            },
-            dateTo: {
-              type: "string",
-              format: "date",
-              description: "Filter to date",
-            },
-            customerId: {
-              type: "integer",
-              description: "Filter by customer ID",
-            },
+  "/",
+  {
+    preHandler: [authenticate, checkCompanyAccess()],
+    schema: {
+      description: "Get all invoices with optional filters and pagination",
+      tags: ["Invoices"],
+      querystring: {
+        type: "object",
+        properties: {
+          saleType: {
+            type: "string",
+            enum: ["Cash", "Installment"],
+            description: "Filter by sale type",
+          },
+          dateFrom: {
+            type: "string",
+            format: "date",
+            description: "Filter from date",
+          },
+          dateTo: {
+            type: "string",
+            format: "date",
+            description: "Filter to date",
+          },
+          customerId: {
+            type: "integer",
+            description: "Filter by customer ID",
+          },
+          page: {
+            type: "integer",
+            minimum: 1,
+            default: 1,
+            description: "Page number",
+          },
+          limit: {
+            type: "integer",
+            minimum: 1,
+            maximum: 100,
+            default: 10,
+            description: "Items per page",
           },
         },
       },
     },
-    getAllInvoices
-  );
+  },
+  getAllInvoices
+);
 
   // GET /api/invoices/recent - Get recent invoices
   fastify.get(

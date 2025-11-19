@@ -9,7 +9,7 @@ import { ERROR_CODES } from "../../shared/errors/errorCodes.js";
 /**
  * Get all invoices based on user role
  */
-export async function getAllInvoices(prisma, currentUser, filters = {}) {
+export async function getAllInvoices(prisma, currentUser, filters = {}, page = 1, limit = 10) {
   const { role, companyId } = currentUser;
 
   let targetCompanyId = null;
@@ -24,7 +24,10 @@ export async function getAllInvoices(prisma, currentUser, filters = {}) {
     targetCompanyId = companyId;
   }
 
-  return await invoicesRepository.findAll(prisma, targetCompanyId, filters);
+  const skip = (page - 1) * limit;
+  const take = limit;
+
+  return await invoicesRepository.findAll(prisma, targetCompanyId, filters, skip, take);
 }
 
 /**

@@ -20,18 +20,25 @@ import {
 export async function getAllInvoices(request, reply) {
   try {
     const currentUser = request.user;
-    const filters = request.query;
+    const { page = 1, limit = 10, ...filters } = request.query;
+    
+    const pageNumber = parseInt(page);
+    const itemsPerPage = parseInt(limit);
 
-    const invoices = await invoicesService.getAllInvoices(
+    const result = await invoicesService.getAllInvoices(
       request.server.prisma,
       currentUser,
-      filters
+      filters,
+      pageNumber,
+      itemsPerPage
     );
 
     return reply.send({
       success: true,
-      data: invoices,
-      count: invoices.length,
+      data: result.data,
+      total: result.total,
+      page: result.page,
+      totalPages: result.totalPages,
     });
   } catch (error) {
     request.log.error(error);
