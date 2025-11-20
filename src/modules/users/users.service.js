@@ -300,3 +300,67 @@ export const loginUser = async (prisma, email, password) => {
     },
   };
 };
+
+
+/**
+ * developer Login
+ * @param {Object} prisma - Prisma client
+ * @param {String} email - Email address
+ * @param {String} password - Password
+ */
+export const loginDevUser = async (prisma, email, password) => {
+  const user = await userRepo.findUserByEmail(prisma, email);
+
+  if (!user || !(await comparePassword(password, user.passwordHash))) {
+    throw new AppError("Invalid email or password", 401);
+  }
+  // Checking user role
+  if (user.role !== "developer") {
+    throw new AppError(
+      "Your account is not allowed to access this route.",
+      401
+    );
+  }
+
+  // Checking user status
+  if (user.status !== "Active") {
+    throw new AppError(
+      "Your account is inactive. Please contact support.",
+      403
+    );
+  }
+
+  // ✅ CHANGED: Check subscription but don't block login
+  let subscriptionExpired = false;
+  if (user.role !== "developer" && user.companyId) {
+    const now = new Date();
+    const subscription = await prisma.subscription.findFirst({
+      where: {
+        companyId: user.companyId,
+        endDate: { gte: now.toISOString() },
+      },
+      orderBy: { endDate: "desc" },
+    });
+    subscriptionExpired = !subscription;
+  }
+
+  const token = generateToken({
+    userId: user.id,
+    email: user.email,
+    role: user.role,
+    companyId: user.companyId,
+  });
+
+  return {
+    token,
+    user: {
+      id: user.id,
+      companyId: user.companyId,
+      companyName: user.company?.name,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      subscriptionExpired,
+    },
+  };
+};
