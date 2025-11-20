@@ -6,7 +6,7 @@
 /**
  * Find all invoices with optional company filter
  */
-export async function findAll(prisma, companyId = null, filters = {}) {
+export async function findAll(prisma, companyId = null, filters = {}, skip = 0, take = 10) {
   const where = {};
 
   if (companyId !== null) {
@@ -31,55 +31,68 @@ export async function findAll(prisma, companyId = null, filters = {}) {
     where.customerId = Number(filters.customerId);
   }
 
-  return await prisma.invoice.findMany({
-    where,
-    include: {
-      customer: {
-        select: {
-          id: true,
-          fullName: true,
-          primaryNumber: true,
+  // استخدام Promise.all لتحسين الأداء
+  const [data, total] = await Promise.all([
+    prisma.invoice.findMany({
+      where,
+      skip,
+      take,
+      include: {
+        customer: {
+          select: {
+            id: true,
+            fullName: true,
+            primaryNumber: true,
+          },
         },
-      },
-      salesRep: {
-        select: {
-          id: true,
-          fullName: true,
+        salesRep: {
+          select: {
+            id: true,
+            fullName: true,
+          },
         },
-      },
-      technician: {
-        select: {
-          id: true,
-          fullName: true,
+        technician: {
+          select: {
+            id: true,
+            fullName: true,
+          },
         },
-      },
-      company: {
-        select: {
-          id: true,
-          name: true,
+        company: {
+          select: {
+            id: true,
+            name: true,
+          },
         },
-      },
-      invoiceItems: {
-        include: {
-          product: true,
-          accessory: true,
-          service: true,
+        invoiceItems: {
+          include: {
+            product: true,
+            accessory: true,
+            service: true,
+          },
         },
-      },
-      installment: {
-        include: {
-          installmentPayments: {
-            orderBy: {
-              dueDate: "asc",
+        installment: {
+          include: {
+            installmentPayments: {
+              orderBy: {
+                dueDate: "asc",
+              },
             },
           },
         },
       },
-    },
-    orderBy: {
-      contractDate: "desc",
-    },
-  });
+      orderBy: {
+        contractDate: "desc",
+      },
+    }),
+    prisma.invoice.count({ where }),
+  ]);
+
+  return {
+    data,
+    total,
+    page: Math.floor(skip / take) + 1,
+    totalPages: Math.ceil(total / take),
+  };
 }
 
 /**
