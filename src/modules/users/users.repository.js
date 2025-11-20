@@ -5,10 +5,21 @@
 /**
  * Fetch all users with filtering by company
  */
-export const findAllUsers = async (prisma, companyId = null) => {
+export const findAllUsers = async (prisma, companyId = null, pagination = {}) => {
   const whereClause = companyId ? { companyId } : {};
 
-  return prisma.user.findMany({
+  // Pagination
+  const page = parseInt(pagination.page) || 1;
+  const limit = parseInt(pagination.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  // Get total count for pagination
+  const total = await prisma.user.count({
+    where: whereClause,
+  });
+
+  // Get paginated data
+  const users = await prisma.user.findMany({
     where: whereClause,
     select: {
       id: true,
@@ -28,7 +39,21 @@ export const findAllUsers = async (prisma, companyId = null) => {
     orderBy: {
       createdAt: "desc",
     },
+    skip,
+    take: limit,
   });
+
+  return {
+    data: users,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasNext: page < Math.ceil(total / limit),
+      hasPrev: page > 1,
+    }
+  };
 };
 
 /**

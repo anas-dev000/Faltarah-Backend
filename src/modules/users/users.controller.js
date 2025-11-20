@@ -10,14 +10,22 @@ import * as userService from "./users.service.js";
 export const getAll = async (request, reply) => {
   // From the authenticate middleware
   const currentUser = request.user;
-  const users = await userService.getAllUsers(
+  
+  const pagination = {
+    page: request.query.page || 1,
+    limit: request.query.limit || 10,
+  };
+
+  const result = await userService.getAllUsers(
     request.server.prisma,
-    currentUser
+    currentUser,
+    pagination
   );
+
   return reply.send({
     success: true,
-    data: users,
-    count: users.length,
+    data: result.data,
+    pagination: result.pagination,
   });
 };
 
