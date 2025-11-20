@@ -8,12 +8,11 @@ import { AppError } from "../../shared/errors/AppError.js";
 /**
  * Get all products with filters
  */
-export const getAllProducts = async (prisma, currentUser, filters = {}) => {
+export const getAllProducts = async (prisma, currentUser, filters = {}, pagination = {}) => {
   const { role, companyId } = currentUser;
-
   const targetCompanyId = role === "developer" ? null : companyId;
 
-  return await productsRepository.findAll(prisma, targetCompanyId, filters);
+  return await productsRepository.findAll(prisma, targetCompanyId, filters, pagination);
 };
 
 /**

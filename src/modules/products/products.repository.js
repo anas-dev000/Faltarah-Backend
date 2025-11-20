@@ -5,9 +5,9 @@
 /**
  * Find all products with filters
  */
-export const findAll = async (prisma, companyId = null, filters = {}) => {
+export const findAll = async (prisma, companyId = null, filters = {}, pagination = {}) => {
   const where = {};
-
+  
   if (companyId) {
     where.companyId = companyId;
   }
@@ -35,7 +35,16 @@ export const findAll = async (prisma, companyId = null, filters = {}) => {
     where.stock = 0;
   }
 
-  return await prisma.product.findMany({
+  // Pagination
+  const page = parseInt(pagination.page) || 1;
+  const limit = parseInt(pagination.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  // Get total count for pagination
+  const total = await prisma.product.count({ where });
+
+  // Get paginated data
+  const products = await prisma.product.findMany({
     where,
     include: {
       supplier: {
@@ -66,8 +75,23 @@ export const findAll = async (prisma, companyId = null, filters = {}) => {
     orderBy: {
       id: "desc",
     },
+    skip,
+    take: limit,
   });
+
+  return {
+    data: products,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasNext: page < Math.ceil(total / limit),
+      hasPrev: page > 1,
+    }
+  };
 };
+
 
 /**
  * Find product by ID
