@@ -72,6 +72,18 @@ export const getLowStockProductsCount = async (prisma, companyId = null) => {
   return await prisma.product.count({ where });
 };
 
+export const getLowStockAccessoriesCount = async (prisma, companyId = null) => {
+  const where = {
+    stock: { lte: 10 },
+  };
+  
+  if (companyId) {
+    where.companyId = companyId;
+  }
+  
+  return await prisma.accessory.count({ where });
+};
+
 /**
  * Get monthly revenue (current month)
  */

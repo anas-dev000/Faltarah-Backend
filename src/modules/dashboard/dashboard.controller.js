@@ -94,6 +94,19 @@ export const getLowStockProducts = async (request, reply) => {
   });
 };
 
+export const getLowStockAccessories = async (request, reply) => {
+  const currentUser = request.user;
+
+  const count = await dashboardService.getLowStockAccessories(
+    request.server.prisma,
+    currentUser
+  );
+
+  return reply.send({
+    success: true,
+    data: { count },
+  });
+};
 /**
  * Get monthly revenue
  * @route GET /api/invoices/monthly-revenue

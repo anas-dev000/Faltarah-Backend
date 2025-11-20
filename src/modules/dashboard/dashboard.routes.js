@@ -70,6 +70,15 @@ export default async function dashboardRoutes(fastify, options) {
     handler: dashboardController.getLowStockProducts,
   });
 
+  fastify.get("/accessories/low-stock-count", {
+    preHandler: [
+      authenticate,
+      checkCompanyAccess(),
+      authorize(["manager", "developer"]),
+    ],
+    handler: dashboardController.getLowStockAccessories,
+  });
+
   /**
    * @route GET /api/invoices/monthly-revenue
    * @desc Get monthly revenue
