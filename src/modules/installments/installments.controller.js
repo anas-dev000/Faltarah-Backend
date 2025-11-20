@@ -19,16 +19,22 @@ import {
 export async function getAllInstallments(request, reply) {
   try {
     const currentUser = request.user;
+    
+    const pagination = {
+      page: request.query.page || 1,
+      limit: request.query.limit || 10,
+    };
 
-    const installments = await installmentsService.getAllInstallments(
+    const result = await installmentsService.getAllInstallments(
       request.server.prisma,
-      currentUser
+      currentUser,
+      pagination
     );
 
     return reply.send({
       success: true,
-      data: installments,
-      count: installments.length,
+      data: result.data,
+      pagination: result.pagination,
     });
   } catch (error) {
     request.log.error(error);
