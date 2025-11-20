@@ -14,7 +14,7 @@ const sanitizeName = (name) => {
 
 /**
  * Build dynamic folder path based on entity type
- * @param {String} entityType - Entity type (customer/employee)
+ * @param {String} entityType - Entity type (customer/employee/company)
  * @param {Object} options - Folder options
  * @returns {String} - Folder path
  */
@@ -36,6 +36,10 @@ const buildFolderPath = (entityType, options = {}) => {
       const sanitizedEmployee = sanitizeName(employeeName || "unknown-employee");
       return `employees/${sanitizedCompany}/${sanitizedRole}/${sanitizedEmployee}`;
 
+    case "company":
+      // companies/CompanyName
+      return `companies/${sanitizedCompany}`;
+
     default:
       return `misc/${sanitizedCompany}`;
   }
@@ -44,7 +48,7 @@ const buildFolderPath = (entityType, options = {}) => {
 /**
  * Upload file to Cloudinary with dynamic folder structure
  * @param {Object} file - Multipart file object from Fastify
- * @param {String} entityType - Entity type (customer/employee)
+ * @param {String} entityType - Entity type (customer/employee/company)
  * @param {Object} folderOptions - Options for building folder path
  * @param {Object} uploadConfig - Optional upload configuration overrides
  * @returns {Promise<Object>} - Object with url and public_id
@@ -104,7 +108,7 @@ export const uploadToCloudinary = async (
 /**
  * Upload Buffer to Cloudinary with dynamic folder structure
  * @param {Buffer} buffer - File buffer
- * @param {String} entityType - Entity type (customer/employee)
+ * @param {String} entityType - Entity type (customer/employee/company)
  * @param {Object} folderOptions - Options for building folder path
  * @param {Object} uploadConfig - Optional upload configuration overrides
  * @returns {Promise<Object>} - Object with url and public_id
@@ -138,7 +142,7 @@ export const uploadBufferToCloudinary = async (
 
   const finalConfig = { ...defaultConfig, ...uploadConfig };
 
-  return new Promise((resolve, reject) =>{
+  return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       finalConfig,
       (error, result) => {
@@ -240,7 +244,7 @@ export const deleteCloudinaryFolder = async (folderPath) => {
 
 /**
  * Delete entity folder based on type
- * @param {String} entityType - Entity type (customer/employee)
+ * @param {String} entityType - Entity type (customer/employee/company)
  * @param {Object} folderOptions - Options for building folder path
  */
 export const deleteEntityFolder = async (entityType, folderOptions = {}) => {
