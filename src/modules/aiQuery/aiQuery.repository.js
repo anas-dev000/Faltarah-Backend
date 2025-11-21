@@ -1,19 +1,29 @@
 // src/modules/aiQuery/aiQuery.repository.js
 // ==========================================
-// AI Query Repository - Data Access Layer (FIXED)
+// AI Query Repository - Data Access Layer (FIXED: Relations with Connect)
 // ==========================================
+
+import { Prisma } from "@prisma/client";
 
 /**
  * حفظ استعلام في السجل
  */
 export const createQueryHistory = async (prisma, data) => {
+  // Ensure companyId is properly set (handle null/undefined)
+  const safeCompanyId = data.companyId ? data.companyId : null;
+
+  console.log(
+    "safeCompanyId = data.companyId ? data.companyId : null;  result => ",
+    safeCompanyId
+  );
+
   return prisma.aIQueryHistory.create({
     data: {
-      userId: data.userId,
-      companyId: data.companyId,
+      user: { connect: { id: data.userId } },
+      ...(safeCompanyId && { company: { connect: { id: safeCompanyId } } }),
       queryText: data.queryText,
       queryType: data.queryType,
-      results: data.results || [],
+      results: Prisma.JsonNull ? null : data.results || [],
       resultCount: data.resultCount || 0,
       status: data.status || "success",
       errorMessage: data.errorMessage,
@@ -32,7 +42,14 @@ export const getQueryHistory = async (
   role,
   limit = 10
 ) => {
-  const where = role === "developer" ? {} : { companyId, userId };
+  // Handle null companyId in where clause
+  const where =
+    role === "developer"
+      ? {}
+      : {
+          userId,
+          ...(companyId && { companyId }),
+        };
 
   return prisma.aIQueryHistory.findMany({
     where,
@@ -174,11 +191,11 @@ export const queryAccessories = async (prisma, filters, companyId, role) => {
 };
 
 /**
- * استعلامات الفواتير (FIXED: No auto-date filter)
+ * استعلامات الفواتير (FIXED: Always include companyId filter if available)
  */
 export const queryInvoices = async (prisma, filters, companyId, role) => {
   const where = {
-    ...(role !== "developer" && { companyId }),
+    ...(role !== "developer" && companyId && { companyId }), // Only add if companyId exists
     ...(filters.saleType && { saleType: filters.saleType }),
   };
 
@@ -193,7 +210,7 @@ export const queryInvoices = async (prisma, filters, companyId, role) => {
     }
   }
 
-  // ✅ FIXED: Date filter ONLY if year/month explicitly provided
+  // Date filter ONLY if year/month explicitly provided
   if (filters.year) {
     const startDate = new Date(filters.year, 0, 1);
     const endDate = new Date(filters.year, 11, 31, 23, 59, 59);
@@ -212,7 +229,7 @@ export const queryInvoices = async (prisma, filters, companyId, role) => {
     };
   }
 
-  // ✅ FIXED: Debug where clause
+  // Debug where clause
   console.log(`🔍 Invoice where clause:`, JSON.stringify(where, null, 2));
 
   return prisma.invoice.findMany({
@@ -286,8 +303,8 @@ export const queryInstallments = async (prisma, filters, companyId, role) => {
     };
   }
 
-  // الربط مع الشركة
-  if (role !== "developer") {
+  // الربط مع الشركة - Only if companyId exists
+  if (role !== "developer" && companyId) {
     where.installment = {
       invoice: {
         companyId,
@@ -321,7 +338,7 @@ export const queryInstallments = async (prisma, filters, companyId, role) => {
  */
 export const queryMaintenance = async (prisma, filters, companyId, role) => {
   const where = {
-    ...(role !== "developer" && { companyId }),
+    ...(role !== "developer" && companyId && { companyId }),
     ...(filters.status && { status: filters.status }),
   };
 
@@ -361,7 +378,7 @@ export const queryMaintenance = async (prisma, filters, companyId, role) => {
  */
 export const querySuppliers = async (prisma, filters, companyId, role) => {
   const where = {
-    ...(role !== "developer" && { companyId }),
+    ...(role !== "developer" && companyId && { companyId }),
   };
 
   return prisma.supplier.findMany({
