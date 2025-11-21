@@ -1,33 +1,13 @@
 // ==========================================
-// aiQuery.routes.js - API Routes Registration
+// aiQuery.routes.js - API Routes (FIXED)
 // ==========================================
 
-// وظيفة الملف: تسجيل جميع مسارات API الخاصة بـ AI Query
-//
-// المسارات المتوفرة (6 مسارات):
-// 1. POST /api/ai-query/query - معالجة الاستعلام الذكي الرئيسي
-// 2. GET /api/ai-query/history - جلب السجل السابق للاستعلامات
-// 3. GET /api/ai-query/suggestions - جلب الاقتراحات المحفوظة
-// 4. POST /api/ai-query/save-suggestion - حفظ استعلام جديد
-// 5. DELETE /api/ai-query/suggestion/:id - حذف استعلام محفوظ
-// 6. POST /api/ai-query/stream - بث النتائج عبر Server-Sent Events
-
-// ملاحظات:
-// - جميع المسارات تتطلب مصادقة JWT
-// - جميع البيانات يتم تصفيتها حسب الشركة
-
 import * as aiQueryController from "./aiQuery.controller.js";
+import { indexCompanyData } from "../../shared/utils/rag.service.js";
 import { validateSchema } from "../../shared/utils/validateSchema.js";
 import { querySchema } from "./aiQuery.schema.js";
 import { authenticate } from "../../shared/middlewares/auth.middleware.js";
 
-/**
- * دالة التحقق من صحة البيانات
- * تستخدم Zod schema للتحقق من أن البيانات المرسلة صحيحة
- *
- * @param {Object} schema - مخطط Zod للتحقق
- * @returns {Function} middleware للتحقق
- */
 const validateBody = (schema) => {
   return async (request, reply) => {
     const validation = validateSchema(request.body, schema);
@@ -42,26 +22,10 @@ const validateBody = (schema) => {
   };
 };
 
-/**
- * تسجيل جميع مسارات API
- *
- * @description
- * تعريف جميع المسارات الخاصة بـ AI Query
- * كل مسار يحتوي على:
- * - preHandler: قائمة من middleware (المصادقة والتحقق)
- * - handler: دالة المعالجة الرئيسية
- *
- * @param {Object} fastify - تطبيق Fastify الرئيسي
- */
 export default async function aiQueryRoutes(fastify) {
   /**
    * POST /api/ai-query/query
    * معالجة الاستعلام الذكي الرئيسي
-   *
-   * الوظيفة: استقبال نص الاستعلام من المستخدم ومعالجته
-   * المتطلبات: JWT token في Authorization header
-   * البيانات المرسلة: { query: "نص الاستعلام" }
-   * الاستجابة: { success, data: { queryType, results, aiAnswer, ... } }
    */
   fastify.post("/query", {
     preHandler: [authenticate, validateBody(querySchema)],
@@ -71,11 +35,6 @@ export default async function aiQueryRoutes(fastify) {
   /**
    * GET /api/ai-query/history
    * جلب سجل الاستعلامات السابقة
-   *
-   * الوظيفة: عرض جميع الاستعلامات التي قام بها المستخدم سابقاً
-   * المتطلبات: JWT token
-   * البارامترات: limit (عدد النتائج)، offset (للترقيم)
-   * الاستجابة: { success, data: [استعلامات سابقة] }
    */
   fastify.get("/history", {
     preHandler: [authenticate],
@@ -85,10 +44,6 @@ export default async function aiQueryRoutes(fastify) {
   /**
    * GET /api/ai-query/suggestions
    * جلب الاقتراحات السريعة
-   *
-   * الوظيفة: عرض قائمة بالاستعلامات المقترحة التي يمكن للمستخدم استخدامها
-   * المتطلبات: JWT token
-   * الاستجابة: { success, data: [اقتراحات] }
    */
   fastify.get("/suggestions", {
     preHandler: [authenticate],
@@ -115,10 +70,119 @@ export default async function aiQueryRoutes(fastify) {
 
   /**
    * POST /api/ai-query/stream
-   * استعلام مع streaming (للعرض التدريجي)
+   * استعلام مع streaming
    */
   fastify.post("/stream", {
     preHandler: [authenticate],
     handler: aiQueryController.streamQuery,
+  });
+
+  /**
+   * POST /api/ai-query/index-company
+   * فهرسة بيانات الشركة
+   *
+   * ✅ FIXED: استخدام Raw SQL بدلاً من Prisma model
+   */
+  fastify.post("/index-company", {
+    preHandler: [authenticate],
+    handler: async (request, reply) => {
+      try {
+        const { companyId } = request.body;
+        const currentUser = request.user;
+
+        // التحقق من الصلاحية
+        if (
+          currentUser.role !== "developer" &&
+          currentUser.companyId !== companyId
+        ) {
+          return reply.status(403).send({
+            success: false,
+            error: "ليس لديك صلاحية لفهرسة هذه الشركة",
+          });
+        }
+
+        if (!companyId) {
+          return reply.status(400).send({
+            success: false,
+            error: "companyId مطلوب",
+          });
+        }
+
+        console.log(`🔄 بدء فهرسة الشركة ${companyId}...`);
+
+        const results = await indexCompanyData(
+          request.server.prisma,
+          parseInt(companyId)
+        );
+
+        return reply.send({
+          success: true,
+          data: results,
+          message: "تم فهرسة البيانات بنجاح",
+          total: results.reduce((sum, r) => sum + (r.indexed || 0), 0),
+        });
+      } catch (error) {
+        console.error("❌ Index error:", error);
+        return reply.status(500).send({
+          success: false,
+          error: error.message || "فشل في فهرسة البيانات",
+        });
+      }
+    },
+  });
+
+  /**
+   * GET /api/ai-query/index-status/:companyId
+   * التحقق من حالة الفهرسة
+   *
+   * ✅ FIXED: استخدام Raw SQL
+   */
+  fastify.get("/index-status/:companyId", {
+    preHandler: [authenticate],
+    handler: async (request, reply) => {
+      try {
+        const { companyId } = request.params;
+        const currentUser = request.user;
+
+        if (
+          currentUser.role !== "developer" &&
+          currentUser.companyId !== parseInt(companyId)
+        ) {
+          return reply.status(403).send({
+            success: false,
+            error: "ليس لديك صلاحية",
+          });
+        }
+
+        // ✅ استخدام Raw SQL بدلاً من Prisma
+        const counts = await request.server.prisma.$queryRaw`
+          SELECT entity, COUNT(*)::int as count
+          FROM embedding_store
+          WHERE company_id = ${parseInt(companyId)}
+          GROUP BY entity
+        `;
+
+        const total = counts.reduce((sum, c) => sum + c.count, 0);
+
+        return reply.send({
+          success: true,
+          data: {
+            companyId: parseInt(companyId),
+            totalEmbeddings: total,
+            byEntity: counts.map((c) => ({
+              entity: c.entity,
+              count: c.count,
+            })),
+            indexed: total > 0,
+          },
+        });
+      } catch (error) {
+        console.error("❌ Index status error:", error);
+        return reply.status(500).send({
+          success: false,
+          error: error.message,
+        });
+      }
+    },
   });
 }

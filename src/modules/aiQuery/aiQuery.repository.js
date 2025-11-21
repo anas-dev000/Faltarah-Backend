@@ -1,37 +1,10 @@
+// src/modules/aiQuery/aiQuery.repository.js
 // ==========================================
-// aiQuery.repository.js - Data Access Layer
+// AI Query Repository - Data Access Layer (FIXED)
 // ==========================================
-// وظيفة الملف: كل التفاعل مع قاعدة البيانات
-//
-// المسؤوليات:
-// - بناء استعلامات قاعدة البيانات
-// - حفظ وجلب البيانات
-// - تطبيق عزل المستأجرين (Multi-tenant)
-// - تصفية البيانات حسب الشركة والمستخدم
-//
-// الدوال الرئيسية:
-// - createQueryHistory: حفظ الاستعلام في السجل
-// - getQueryHistory: جلب سجل الاستعلامات
-// - buildCustomerQuery: بناء استعلام العملاء
-// - buildProductQuery: بناء استعلام المنتجات
-// - ... (ودوال مماثلة لكل نوع)
 
 /**
  * حفظ استعلام في السجل
- *
- * @description
- * تسجيل الاستعلام الذي قام به المستخدم لأغراض التتبع والإحصائيات
- * ويتم حفظ:
- * - نص الاستعلام الأصلي
- * - نوع الاستعلام المكتشف
- * - النتائج (في صيغة JSON)
- * - عدد النتائج
- * - حالة التنفيذ (نجح/فشل)
- * - وقت التنفيذ (milliseconds)
- *
- * @param {Object} prisma - عميل Prisma
- * @param {Object} data - بيانات الاستعلام
- * @returns {Promise<Object>} السجل المحفوظ
  */
 export const createQueryHistory = async (prisma, data) => {
   return prisma.aIQueryHistory.create({
@@ -51,16 +24,6 @@ export const createQueryHistory = async (prisma, data) => {
 
 /**
  * جلب سجل الاستعلامات
- *
- * @description
- * جلب جميع الاستعلامات السابقة للمستخدم الحالي
- * ويتم التصفية حسب:
- * - معرف المستخدم
- * - معرف الشركة (عزل البيانات)
- * - فترة زمنية محددة (اختياري)
- *
- * @param {Object} prisma - عميل Prisma
- * @param {number} userId - معرف المستخدم
  */
 export const getQueryHistory = async (
   prisma,
@@ -87,9 +50,9 @@ export const getQueryHistory = async (
   });
 };
 
-// ==========================================
-// استعلامات العملاء
-// ==========================================
+/**
+ * استعلامات العملاء
+ */
 export const queryCustomers = async (prisma, filters, companyId, role) => {
   const where = {
     ...(role !== "developer" && { companyId }),
@@ -115,9 +78,9 @@ export const queryCustomers = async (prisma, filters, companyId, role) => {
   });
 };
 
-// ==========================================
-// استعلامات الموظفين
-// ==========================================
+/**
+ * استعلامات الموظفين
+ */
 export const queryEmployees = async (prisma, filters, companyId, role) => {
   const where = {
     ...(role !== "developer" && { companyId }),
@@ -146,9 +109,9 @@ export const queryEmployees = async (prisma, filters, companyId, role) => {
   });
 };
 
-// ==========================================
-// استعلامات المنتجات
-// ==========================================
+/**
+ * استعلامات المنتجات
+ */
 export const queryProducts = async (prisma, filters, companyId, role) => {
   const where = {
     ...(role !== "developer" && { companyId }),
@@ -174,15 +137,14 @@ export const queryProducts = async (prisma, filters, companyId, role) => {
         },
       },
     },
-    // Order by `id` because `product` model does not define `createdAt`
     orderBy: { id: "desc" },
     take: 100,
   });
 };
 
-// ==========================================
-// استعلامات الملحقات
-// ==========================================
+/**
+ * استعلامات الملحقات
+ */
 export const queryAccessories = async (prisma, filters, companyId, role) => {
   const where = {
     ...(role !== "developer" && { companyId }),
@@ -206,33 +168,52 @@ export const queryAccessories = async (prisma, filters, companyId, role) => {
         },
       },
     },
-    // Accessory model doesn't include `createdAt` in schema, order by `id`
     orderBy: { id: "desc" },
     take: 100,
   });
 };
 
-// ==========================================
-// استعلامات الفواتير
-// ==========================================
+/**
+ * استعلامات الفواتير (FIXED: No auto-date filter)
+ */
 export const queryInvoices = async (prisma, filters, companyId, role) => {
   const where = {
     ...(role !== "developer" && { companyId }),
     ...(filters.saleType && { saleType: filters.saleType }),
   };
 
-  // فلترة حسب التاريخ
-  if (filters.month || filters.year) {
-    const year = filters.year || new Date().getFullYear();
-    const month = filters.month || 1;
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59);
+  // فلترة حسب المبلغ
+  if (filters.totalAmountGte || filters.totalAmountLte) {
+    where.totalAmount = {};
+    if (filters.totalAmountGte) {
+      where.totalAmount.gte = parseFloat(filters.totalAmountGte);
+    }
+    if (filters.totalAmountLte) {
+      where.totalAmount.lte = parseFloat(filters.totalAmountLte);
+    }
+  }
 
+  // ✅ FIXED: Date filter ONLY if year/month explicitly provided
+  if (filters.year) {
+    const startDate = new Date(filters.year, 0, 1);
+    const endDate = new Date(filters.year, 11, 31, 23, 59, 59);
+    where.contractDate = {
+      gte: startDate,
+      lte: endDate,
+    };
+  } else if (filters.month) {
+    const now = new Date();
+    const year = filters.year || now.getFullYear();
+    const startDate = new Date(year, filters.month - 1, 1);
+    const endDate = new Date(year, filters.month, 0, 23, 59, 59);
     where.contractDate = {
       gte: startDate,
       lte: endDate,
     };
   }
+
+  // ✅ FIXED: Debug where clause
+  console.log(`🔍 Invoice where clause:`, JSON.stringify(where, null, 2));
 
   return prisma.invoice.findMany({
     where,
@@ -259,35 +240,58 @@ export const queryInvoices = async (prisma, filters, companyId, role) => {
   });
 };
 
-// ==========================================
-// استعلامات الأقساط
-// ==========================================
+/**
+ * استعلامات الأقساط
+ */
 export const queryInstallments = async (prisma, filters, companyId, role) => {
-  const where = {
-    installment: {
-      invoice: {
-        ...(role !== "developer" && { companyId }),
-      },
-    },
-  };
+  let where = {};
 
-  // حالة القسط
+  // البحث عن الأقساط بناءً على حالتها
   if (filters.status === "Overdue") {
-    where.status = { in: ["Pending", "Partial"] };
-    where.dueDate = { lt: new Date() };
+    // الأقساط المتأخرة: تاريخ استحقاق قديم و حالة غير مدفوعة
+    where = {
+      AND: [
+        {
+          dueDate: {
+            lt: new Date(),
+          },
+        },
+        {
+          status: {
+            in: ["Pending", "Partial"],
+          },
+        },
+      ],
+    };
   } else if (filters.status) {
     where.status = filters.status;
   }
 
-  // الشهر الحالي
+  // فلترة حسب الشهر الحالي إن كان موجود
   if (filters.currentMonth) {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const endOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59
+    );
 
     where.dueDate = {
       gte: startOfMonth,
       lte: endOfMonth,
+    };
+  }
+
+  // الربط مع الشركة
+  if (role !== "developer") {
+    where.installment = {
+      invoice: {
+        companyId,
+      },
     };
   }
 
@@ -312,9 +316,9 @@ export const queryInstallments = async (prisma, filters, companyId, role) => {
   });
 };
 
-// ==========================================
-// استعلامات الصيانة
-// ==========================================
+/**
+ * استعلامات الصيانة
+ */
 export const queryMaintenance = async (prisma, filters, companyId, role) => {
   const where = {
     ...(role !== "developer" && { companyId }),
@@ -352,9 +356,9 @@ export const queryMaintenance = async (prisma, filters, companyId, role) => {
   });
 };
 
-// ==========================================
-// استعلامات الموردين
-// ==========================================
+/**
+ * استعلامات الموردين
+ */
 export const querySuppliers = async (prisma, filters, companyId, role) => {
   const where = {
     ...(role !== "developer" && { companyId }),

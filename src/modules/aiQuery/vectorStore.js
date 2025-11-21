@@ -1,5 +1,5 @@
 // ==========================================
-// vectorStore.js - نظام Embeddings المحدث
+// vectorStore.js - نظام Embeddings المُصلح
 // ==========================================
 // يدعم: OpenAI + Google Gemini + PostgreSQL
 
@@ -12,15 +12,15 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
  */
 
 // اختيار المزود: 'openai' أو 'gemini'
-const EMBEDDING_PROVIDER = process.env.EMBEDDING_PROVIDER || "openai";
+const EMBEDDING_PROVIDER = process.env.EMBEDDING_PROVIDER || "gemini";
 
 // OpenAI Configuration
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_EMBEDDING_MODEL = "text-embedding-3-small";
 
-// Gemini Configuration
+// Gemini Configuration - ✅ FIXED: استخدام النموذج الصحيح
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_EMBEDDING_MODEL = "text-embedding-004";
+const GEMINI_EMBEDDING_MODEL = "models/text-embedding-004"; // ✅ مع prefix
 
 // Initialize Gemini
 let genAI = null;
@@ -48,10 +48,15 @@ export async function ensureTable(prisma) {
       )
     `);
 
-    // إنشاء الـ index منفصل
+    // إنشاء الـ indexes منفصلة
     await prisma.$executeRawUnsafe(`
       CREATE INDEX IF NOT EXISTS idx_company_entity 
       ON embedding_store(company_id, entity)
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS idx_company_id 
+      ON embedding_store(company_id)
     `);
 
     console.log("✅ Embedding table ready");
@@ -101,6 +106,7 @@ async function createOpenAIEmbedding(text) {
 
 /**
  * إنشاء embedding باستخدام Google Gemini
+ * ✅ FIXED: استخدام النموذج الصحيح
  */
 async function createGeminiEmbedding(text) {
   if (!GEMINI_API_KEY || !genAI) {
@@ -108,7 +114,7 @@ async function createGeminiEmbedding(text) {
   }
 
   const model = genAI.getGenerativeModel({
-    model: GEMINI_EMBEDDING_MODEL,
+    model: GEMINI_EMBEDDING_MODEL, // ✅ models/text-embedding-004
   });
 
   const result = await model.embedContent(text);

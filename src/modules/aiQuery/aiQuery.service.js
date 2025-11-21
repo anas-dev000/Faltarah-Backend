@@ -1,26 +1,27 @@
+// src/modules/aiQuery/aiQuery.service.js
 // ==========================================
-// aiQuery.service.js - نظام AI متطور
+// AI Query Service - مع RAG Integration (FIXED VERSION)
 // ==========================================
 
 import * as aiQueryRepo from "./aiQuery.repository.js";
 import { AppError } from "../../shared/errors/AppError.js";
-import * as vectorStore from "./vectorStore.js";
+import {
+  createEmbedding,
+  retrieveSimilarChunks,
+  buildRAGContext,
+  generateRAGResponse,
+} from "../../shared/utils/rag.service.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// إعدادات AI
-const AI_PROVIDER = process.env.AI_PROVIDER || "openai";
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
 let genAI = null;
+
 if (GEMINI_API_KEY) {
   genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 }
 
 /**
- * ========================================
- * 🎯 المعالجة الرئيسية
- * ========================================
+ * معالجة الاستعلام الذكي مع RAG
  */
 export const processSmartQuery = async (prisma, queryText, currentUser) => {
   const startTime = Date.now();
@@ -29,34 +30,42 @@ export const processSmartQuery = async (prisma, queryText, currentUser) => {
   try {
     console.log(`🔍 Processing query: "${queryText}"`);
 
-    // 1. تحليل الاستعلام باستخدام AI
+    // 1. تحليل الاستعلام
     const queryAnalysis = await analyzeQueryWithAI(queryText);
     console.log(`📊 Query type detected: ${queryAnalysis.type}`);
 
-    // 2. التأكد من وجود جدول embeddings
-    await vectorStore.ensureTable(prisma);
+    // 2. إنشاء embedding للاستعلام
+    const queryEmbedding = await createEmbedding(queryText);
+    console.log(`✅ Query embedding created`);
 
-    // 3. إنشاء embedding للاستعلام
-    let queryEmbedding = null;
-    let similarRows = [];
+    // 3. البحث عن بيانات مشابهة (RAG Retrieval)
+    const similarChunks = await retrieveSimilarChunks(
+      prisma,
+      companyId,
+      queryEmbedding,
+      10
+    );
+    console.log(`📚 Retrieved ${similarChunks.length} similar chunks`);
 
-    try {
-      queryEmbedding = await vectorStore.createEmbedding(queryText);
-      similarRows = await vectorStore.searchSimilar(
-        prisma,
-        companyId,
-        queryEmbedding,
-        5
-      );
-      console.log(`✅ Found ${similarRows.length} similar records`);
-    } catch (error) {
-      console.warn("⚠️ Embedding search failed:", error.message);
-    }
+    // 4. بناء السياق
+    const ragContext = buildRAGContext(similarChunks, queryAnalysis.type);
 
-    // 4. بناء الفلاتر وتنفيذ الاستعلام
+    // 5. استخراج الفلاتر من النص
     const queryBuilder = getQueryBuilder(queryAnalysis.type);
     const filters = queryBuilder(queryText, queryAnalysis);
+    const extractedFilters = extractFiltersFromQuery(
+      queryText,
+      queryAnalysis.type
+    );
+    Object.assign(filters, extractedFilters);
 
+    // ✅ FIXED: Debug filters before query execution
+    console.log(
+      `🔍 Extracted filters for ${queryAnalysis.type}:`,
+      JSON.stringify(filters, null, 2)
+    );
+
+    // 6. تنفيذ الاستعلام
     const results = await executeQuery(
       prisma,
       queryAnalysis.type,
@@ -65,25 +74,31 @@ export const processSmartQuery = async (prisma, queryText, currentUser) => {
       role
     );
 
-    console.log(`✅ Found ${results.length} results`);
+    console.log(`✅ Found ${results.length} results from database`);
 
-    // 5. إنشاء إجابة ذكية باستخدام AI
-    const aiAnswer = await generateAIAnswer(
-      queryText,
-      queryAnalysis,
-      results,
-      similarRows
-    );
+    // 7. توليد الإجابة بـ AI مع RAG Context
+    const aiAnswer = await generateRAGResponse(queryText, ragContext, results);
+
+    // ✅ FIXED: Improved fallback logic for empty results
+    if (results.length === 0) {
+      aiAnswer = `لم يتم العثور على نتائج مطابقة لاستعلامك "${queryText}". يرجى تعديل الشروط أو التحقق من البيانات.`;
+    } else if (aiAnswer.includes("لم يتم العثور") && results.length > 0) {
+      aiAnswer = `تم العثور على ${results.length} نتيجة مناسبة بناءً على استعلامك "${queryText}". إليك التفاصيل:`;
+    }
 
     const executionTime = Date.now() - startTime;
 
-    // 6. حفظ في السجل
+    // 8. حفظ في السجل
     await aiQueryRepo.createQueryHistory(prisma, {
       userId,
       companyId,
       queryText,
       queryType: queryAnalysis.type,
-      results: { results, similarRows },
+      results: {
+        results,
+        ragContext: ragContext.substring(0, 500),
+        similarChunks: similarChunks.length,
+      },
       resultCount: results.length,
       status: "success",
       executionTime,
@@ -97,7 +112,13 @@ export const processSmartQuery = async (prisma, queryText, currentUser) => {
       executionTime,
       interpretation: queryAnalysis.interpretation,
       aiAnswer,
-      similar: similarRows,
+      ragMetadata: {
+        chunksRetrieved: similarChunks.length,
+        topSimilarity:
+          similarChunks.length > 0
+            ? (similarChunks[0].similarity * 100).toFixed(1)
+            : 0,
+      },
     };
   } catch (error) {
     console.error("❌ Query processing failed:", error);
@@ -121,22 +142,59 @@ export const processSmartQuery = async (prisma, queryText, currentUser) => {
 };
 
 /**
- * ========================================
- * 🤖 تحليل الاستعلام بالذكاء الاصطناعي
- * ========================================
+ * تحليل الاستعلام بـ AI (IMPROVED PROMPT)
  */
 async function analyzeQueryWithAI(queryText) {
   try {
-    console.log("🤖 Analyzing query with AI...");
-
-    if (AI_PROVIDER === "gemini" && genAI) {
-      return await analyzeWithGemini(queryText);
-    } else if (AI_PROVIDER === "openai" && OPENAI_API_KEY) {
-      return await analyzeWithOpenAI(queryText);
-    } else {
-      console.warn("⚠️ No AI provider configured, using fallback");
+    if (!genAI) {
       return analyzeQueryLocal(queryText);
     }
+
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    // ✅ FIXED: Enhanced prompt for better accuracy and context awareness
+    const prompt = `أنت محلل استعلامات ذكي متخصص في أنظمة إدارة الفواتير والعملاء. حلل الاستعلام بعناية وحدد نوع البيانات المطلوبة فقط بناءً على الكلمات الرئيسية الواضحة. تجنب الافتراضات غير المدعومة.
+
+الاستعلام: "${queryText}"
+
+الأنواع المتاحة (اختر واحداً فقط بناءً على السياق الواضح):
+- customer: إذا كان يذكر "عميل" أو "عملاء" أو "زبون"
+- employee: إذا كان يذكر "موظف" أو "تكنيشن" أو "منديب"
+- product: إذا كان يذكر "منتج" أو "فلتر" أو "منتجات"
+- accessory: إذا كان يذكر "ملحق" أو "اكسسوار"
+- invoice: إذا كان يذكر "فاتورة" أو "فواتير" أو "عقد"
+- installmentPayment: إذا كان يذكر "قسط" أو "أقساط" أو "تقسيط"
+- maintenance: إذا كان يذكر "صيانة" أو "صيانات"
+- supplier: إذا كان يذكر "مورد" أو "موردين"
+
+إرشادات:
+- كن دقيقاً: لا تختار نوعاً إلا إذا كان مذكوراً صراحة أو في سياق واضح.
+- إذا لم يكن واضحاً، اختر "unknown".
+- للفلاتر: حدد الشروط العددية أو النصية فقط إذا كانت مرتبطة بالنوع (مثل "قيمة أقل من X" للفواتير).
+
+أجب بـ JSON فقط بدون أي نص إضافي:
+{
+  "type": "نوع_البيانات",
+  "confidence": 0.95,
+  "keywords": ["كلمة1", "كلمة2"],
+  "interpretation": "شرح مختصر بالعربية"
+}`;
+
+    const result = await model.generateContent(prompt);
+    const response = result.response.text();
+
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        type: parsed.type,
+        confidence: parsed.confidence,
+        interpretation: parsed.interpretation,
+        keywords: parsed.keywords,
+      };
+    }
+
+    return analyzeQueryLocal(queryText);
   } catch (error) {
     console.warn("⚠️ AI analysis failed, using fallback:", error.message);
     return analyzeQueryLocal(queryText);
@@ -144,108 +202,20 @@ async function analyzeQueryWithAI(queryText) {
 }
 
 /**
- * تحليل باستخدام Gemini
- */
-async function analyzeWithGemini(queryText) {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-  const prompt = `أنت محلل استعلامات ذكي. حلل الاستعلام التالي وحدد نوع البيانات المطلوب.
-
-الاستعلام: "${queryText}"
-
-أنواع البيانات المتاحة:
-- customers (العملاء)
-- employees (الموظفين)
-- products (المنتجات)
-- accessories (الملحقات)
-- invoices (الفواتير)
-- installments (الأقساط)
-- maintenance (الصيانة)
-- suppliers (الموردين)
-
-أجب بصيغة JSON فقط:
-{
-  "type": "نوع البيانات",
-  "confidence": 0.95,
-  "keywords": ["كلمة1", "كلمة2"],
-  "interpretation": "تفسير مختصر بالعربية"
-}`;
-
-  const result = await model.generateContent(prompt);
-  const response = result.response.text();
-
-  // استخراج JSON من الرد
-  const jsonMatch = response.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    const parsed = JSON.parse(jsonMatch[0]);
-    return {
-      type: parsed.type,
-      confidence: parsed.confidence,
-      interpretation: parsed.interpretation,
-      rawText: queryText,
-    };
-  }
-
-  throw new Error("Invalid response format");
-}
-
-/**
- * تحليل باستخدام OpenAI
- */
-async function analyzeWithOpenAI(queryText) {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: `أنت محلل استعلامات. حدد نوع البيانات: customers, employees, products, accessories, invoices, installments, maintenance, suppliers. أجب بـ JSON فقط: {"type":"...", "confidence":0.95, "interpretation":"..."}`,
-        },
-        {
-          role: "user",
-          content: queryText,
-        },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.3,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`OpenAI error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  const parsed = JSON.parse(data.choices[0].message.content);
-
-  return {
-    type: parsed.type,
-    confidence: parsed.confidence || 0.9,
-    interpretation: parsed.interpretation,
-    rawText: queryText,
-  };
-}
-
-/**
- * تحليل محلي (fallback)
+ * تحليل محلي (Fallback) - Enhanced
  */
 function analyzeQueryLocal(queryText) {
   const lowerText = queryText.toLowerCase();
 
   const types = {
-    customers: ["عميل", "عملاء", "زبون", "زبائن"],
-    employees: ["موظف", "موظفين", "تكنيشن", "فني", "مندوب"],
-    products: ["منتج", "منتجات", "فلتر", "فلاتر"],
-    accessories: ["ملحق", "ملحقات", "اكسسوار"],
-    invoices: ["فاتورة", "فواتير", "عقد"],
-    installments: ["قسط", "أقساط", "تقسيط"],
+    customer: ["عميل", "عملاء", "زبون", "زبائن"],
+    employee: ["موظف", "موظفين", "تكنيشن", "فني", "منديب"],
+    product: ["منتج", "منتجات", "فلتر", "فلاتر"],
+    accessory: ["ملحق", "ملحقات", "اكسسوار"],
+    invoice: ["فاتورة", "فواتير", "عقد"],
+    installmentPayment: ["قسط", "أقساط", "تقسيط"],
     maintenance: ["صيانة", "صيانات"],
-    suppliers: ["مورد", "موردين"],
+    supplier: ["مورد", "موردين"],
   };
 
   for (const [type, keywords] of Object.entries(types)) {
@@ -254,7 +224,7 @@ function analyzeQueryLocal(queryText) {
         type,
         confidence: 0.8,
         interpretation: `البحث في ${getTypeNameAr(type)}`,
-        rawText: queryText,
+        keywords,
       };
     }
   }
@@ -262,169 +232,139 @@ function analyzeQueryLocal(queryText) {
   return {
     type: "unknown",
     confidence: 0.3,
-    interpretation: "استعلام عام",
-    rawText: queryText,
+    interpretation: "استعلام عام غير محدد",
+    keywords: [],
   };
 }
 
 /**
- * ========================================
- * 💬 إنشاء إجابة ذكية
- * ========================================
+ * استخراج الفلاتر من النص (FIXED: Better number/year detection)
  */
-async function generateAIAnswer(queryText, analysis, results, similarRows) {
-  if (results.length === 0) {
-    return `لم أجد أي نتائج تطابق استعلامك: "${queryText}"`;
-  }
+function extractFiltersFromQuery(queryText, queryType) {
+  const filters = {};
+  const lowerText = queryText.toLowerCase();
 
-  try {
-    const context = buildContext(analysis.type, results, similarRows);
+  if (queryType === "invoice") {
+    const numbers = queryText.match(/\d+(?:\.\d+)?/g); // Match floats too
 
-    if (AI_PROVIDER === "gemini" && genAI) {
-      return await generateAnswerWithGemini(queryText, context, results.length);
-    } else if (AI_PROVIDER === "openai" && OPENAI_API_KEY) {
-      return await generateAnswerWithOpenAI(queryText, context, results.length);
+    // ✅ FIXED: Extract amount filters more precisely
+    if (
+      (lowerText.includes("أقل") ||
+        lowerText.includes("اقل") ||
+        lowerText.includes("أصغر")) &&
+      numbers
+    ) {
+      // Take the last number as the threshold
+      filters.totalAmountLte = parseFloat(numbers[numbers.length - 1]);
     }
-  } catch (error) {
-    console.warn("⚠️ AI answer generation failed:", error.message);
-  }
 
-  return generateSimpleAnswer(analysis.type, results, queryText);
-}
-
-/**
- * إنشاء إجابة باستخدام Gemini
- */
-async function generateAnswerWithGemini(queryText, context, resultCount) {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-  const prompt = `أنت مساعد ذكي للإجابة على استعلامات قاعدة البيانات.
-
-الاستعلام: "${queryText}"
-
-البيانات المتاحة (${resultCount} نتيجة):
-${context}
-
-قدم إجابة واضحة ومختصرة بالعربية (2-3 جمل فقط). ركز على أهم المعلومات.`;
-
-  const result = await model.generateContent(prompt);
-  return result.response.text();
-}
-
-/**
- * إنشاء إجابة باستخدام OpenAI
- */
-async function generateAnswerWithOpenAI(queryText, context, resultCount) {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: "أنت مساعد ذكي. أجب بالعربية بشكل مختصر (2-3 جمل فقط).",
-        },
-        {
-          role: "user",
-          content: `الاستعلام: "${queryText}"\n\nالبيانات (${resultCount} نتيجة):\n${context}\n\nما الإجابة المختصرة؟`,
-        },
-      ],
-      max_tokens: 150,
-      temperature: 0.7,
-    }),
-  });
-
-  const data = await response.json();
-  return data.choices[0].message.content;
-}
-
-/**
- * بناء السياق من النتائج
- */
-function buildContext(type, results, similarRows) {
-  const items = results.slice(0, 5).map((r, i) => {
-    if (type === "customers") {
-      return `${i + 1}. ${r.fullName} - ${r.governorate} - ${r.customerType}`;
-    } else if (type === "products") {
-      return `${i + 1}. ${r.name} - السعر: ${r.price} - المخزون: ${r.stock}`;
-    } else if (type === "employees") {
-      return `${i + 1}. ${r.fullName} - ${r.role} - ${r.city}`;
-    } else if (type === "maintenance") {
-      return `${i + 1}. العميل: ${r.customer?.fullName} - الحالة: ${r.status}`;
+    if (
+      (lowerText.includes("أكبر") ||
+        lowerText.includes("اكبر") ||
+        lowerText.includes("أعلى")) &&
+      numbers
+    ) {
+      filters.totalAmountGte = parseFloat(numbers[numbers.length - 1]);
     }
-    return `${i + 1}. ${JSON.stringify(r).substring(0, 100)}`;
-  });
 
-  return items.join("\n");
-}
+    // ✅ FIXED: Year detection - Only if "سنة" mentioned OR 4-digit number in year-like context (1900-2100)
+    const yearMatch = queryText.match(/\b(19|20)\d{2}\b/); // Match realistic years only
+    if ((lowerText.includes("سنة") || lowerText.includes("عام")) && yearMatch) {
+      filters.year = parseInt(yearMatch[0]);
+    }
+    // Remove the broad /\d{4}/ that was causing false positives
 
-/**
- * إجابة بسيطة (fallback)
- */
-function generateSimpleAnswer(type, results, queryText) {
-  const typeAr = getTypeNameAr(type);
-  const count = results.length;
-
-  if (count === 0) {
-    return `لم أجد أي ${typeAr} تطابق: "${queryText}"`;
+    // Additional: Sale type detection
+    if (lowerText.includes("كاش") || lowerText.includes("نقدي")) {
+      filters.saleType = "Cash";
+    }
+    if (lowerText.includes("تقسيط") || lowerText.includes("أقساط")) {
+      filters.saleType = "Installment";
+    }
   }
 
-  return `وجدت ${count} ${
-    count === 1 ? "نتيجة" : "نتائج"
-  } من ${typeAr}. استخدم الجدول أدناه لعرض التفاصيل.`;
+  if (queryType === "product" || queryType === "accessory") {
+    if (
+      lowerText.includes("منخفض") ||
+      lowerText.includes("ينفذ") ||
+      lowerText.includes("قليل")
+    ) {
+      filters.stockLow = true;
+    }
+
+    const numbers = queryText.match(/\d+(?:\.\d+)?/g);
+    if ((lowerText.includes("أقل") || lowerText.includes("اقل")) && numbers) {
+      filters.priceLte = parseFloat(numbers[numbers.length - 1]);
+    }
+    if ((lowerText.includes("أكبر") || lowerText.includes("اكبر")) && numbers) {
+      filters.priceGte = parseFloat(numbers[numbers.length - 1]);
+    }
+  }
+
+  if (queryType === "installmentPayment") {
+    if (lowerText.includes("متأخر") || lowerText.includes("تأخير")) {
+      filters.status = "Overdue";
+    }
+    if (lowerText.includes("مدفوع") || lowerText.includes("دفيع")) {
+      filters.status = "Paid";
+    }
+    if (lowerText.includes("معلق") || lowerText.includes("مستحق")) {
+      filters.status = "Pending";
+    }
+  }
+
+  // ✅ FIXED: Log extracted filters for debugging
+  console.log(`🔍 Extracted filters from text:`, filters);
+
+  return filters;
 }
 
 /**
- * ========================================
- * 🛠️ دوال مساعدة
- * ========================================
+ * بناء Query Builder (Enhanced with better logic)
  */
-
 function getQueryBuilder(type) {
   const builders = {
-    customers: buildCustomerQuery,
-    employees: buildEmployeeQuery,
-    products: buildProductQuery,
-    accessories: buildAccessoryQuery,
-    invoices: buildInvoiceQuery,
-    installments: buildInstallmentQuery,
+    customer: buildCustomerQuery,
+    employee: buildEmployeeQuery,
+    product: buildProductQuery,
+    accessory: buildAccessoryQuery,
+    invoice: buildInvoiceQuery,
+    installmentPayment: buildInstallmentQuery,
     maintenance: buildMaintenanceQuery,
-    suppliers: buildSupplierQuery,
+    supplier: buildSupplierQuery,
   };
 
   return builders[type] || (() => ({}));
 }
 
-function buildCustomerQuery(text) {
+function buildCustomerQuery(text, analysis) {
   const filters = {};
   const lower = text.toLowerCase();
 
   if (lower.includes("تركيب")) filters.customerType = "Installation";
   if (lower.includes("صيانة")) filters.customerType = "Maintenance";
 
-  const govs = ["القاهرة", "الجيزة", "الإسكندرية"];
-  for (const gov of govs) {
-    if (lower.includes(gov.toLowerCase())) {
-      filters.governorate = gov;
-      break;
-    }
+  // ✅ FIXED: Governorate/City extraction from keywords
+  if (
+    analysis.keywords.some(
+      (kw) =>
+        lower.includes(kw) &&
+        (lower.includes("قاهرة") || lower.includes("الإسكندرية"))
+    )
+  ) {
+    filters.governorate = lower.includes("قاهرة") ? "القاهرة" : "الإسكندرية";
   }
 
   return filters;
 }
 
-function buildEmployeeQuery(text) {
+function buildEmployeeQuery(text, analysis) {
   const filters = {};
   const lower = text.toLowerCase();
 
   if (lower.includes("تكنيشن") || lower.includes("فني"))
     filters.role = "Technician";
-  if (lower.includes("مندوب")) filters.role = "SalesRep";
-  if (lower.includes("شغال")) filters.isEmployed = true;
+  if (lower.includes("منديب")) filters.role = "SalesRep";
 
   return filters;
 }
@@ -433,11 +373,12 @@ function buildProductQuery(text) {
   const filters = {};
   const lower = text.toLowerCase();
 
-  if (lower.includes("خلص") || lower.includes("نفذ")) {
+  if (
+    lower.includes("خلص") ||
+    lower.includes("ينفذ") ||
+    lower.includes("نفد")
+  ) {
     filters.stock = 0;
-  }
-  if (lower.includes("منخفض")) {
-    filters.stockLow = true;
   }
 
   return filters;
@@ -447,12 +388,14 @@ function buildAccessoryQuery(text) {
   return buildProductQuery(text);
 }
 
-function buildInvoiceQuery(text) {
+function buildInvoiceQuery(text, analysis) {
   const filters = {};
   const lower = text.toLowerCase();
 
   if (lower.includes("كاش")) filters.saleType = "Cash";
   if (lower.includes("تقسيط")) filters.saleType = "Installment";
+
+  // ✅ FIXED: No automatic date filter unless year is explicitly set
 
   return filters;
 }
@@ -481,21 +424,24 @@ function buildSupplierQuery() {
   return {};
 }
 
+/**
+ * تنفيذ الاستعلام
+ */
 async function executeQuery(prisma, type, filters, companyId, role) {
   const handlers = {
-    customers: () =>
+    customer: () =>
       aiQueryRepo.queryCustomers(prisma, filters, companyId, role),
-    employees: () =>
+    employee: () =>
       aiQueryRepo.queryEmployees(prisma, filters, companyId, role),
-    products: () => aiQueryRepo.queryProducts(prisma, filters, companyId, role),
-    accessories: () =>
+    product: () => aiQueryRepo.queryProducts(prisma, filters, companyId, role),
+    accessory: () =>
       aiQueryRepo.queryAccessories(prisma, filters, companyId, role),
-    invoices: () => aiQueryRepo.queryInvoices(prisma, filters, companyId, role),
-    installments: () =>
+    invoice: () => aiQueryRepo.queryInvoices(prisma, filters, companyId, role),
+    installmentPayment: () =>
       aiQueryRepo.queryInstallments(prisma, filters, companyId, role),
     maintenance: () =>
       aiQueryRepo.queryMaintenance(prisma, filters, companyId, role),
-    suppliers: () =>
+    supplier: () =>
       aiQueryRepo.querySuppliers(prisma, filters, companyId, role),
   };
 
@@ -509,19 +455,19 @@ async function executeQuery(prisma, type, filters, companyId, role) {
 
 function getTypeNameAr(type) {
   const names = {
-    customers: "العملاء",
-    employees: "الموظفين",
-    products: "المنتجات",
-    accessories: "الملحقات",
-    invoices: "الفواتير",
-    installments: "الأقساط",
+    customer: "العملاء",
+    employee: "الموظفين",
+    product: "المنتجات",
+    accessory: "الملحقات",
+    invoice: "الفواتير",
+    installmentPayment: "الأقساط",
     maintenance: "الصيانة",
-    suppliers: "الموردين",
+    supplier: "الموردين",
   };
   return names[type] || "البيانات";
 }
 
-// دوال أخرى
+// Export functions
 export const getUserQueryHistory = async (prisma, currentUser, limit = 10) => {
   const { userId, companyId, role } = currentUser;
   return aiQueryRepo.getQueryHistory(prisma, userId, companyId, role, limit);
@@ -529,12 +475,14 @@ export const getUserQueryHistory = async (prisma, currentUser, limit = 10) => {
 
 export const getQuerySuggestions = async () => {
   return [
-    "هات العملاء اللي في القاهرة",
-    "اعرض الموظفين التكنيشن",
-    "المنتجات اللي المخزون بتها خلص",
+    "هات العملاء في القاهرة",
+    "المنتجات أقل من 3000 جنيه",
+    "الموظفين التكنيشن",
     "الأقساط المتأخرة",
-    "الفواتير بتاعت شهر 11",
+    "الفواتير بتاع سنة 2024",
     "الصيانات المعلقة",
+    "المنتجات التي المخزون فيها منخفض",
+    "جميع الموردين",
   ];
 };
 
