@@ -1,6 +1,8 @@
 import Fastify from "fastify";
 import { config } from "./config/env.js";
 import { errorHandler } from "./shared/middlewares/errorHandler.middleware.js";
+import { authenticate } from "./shared/middlewares/auth.middleware.js";
+import { checkSubscriptionInfo } from "./shared/middlewares/subscriptionCheck.middleware.js";
 
 // Plugins
 import prismaPlugin from "./plugins/prisma.js";

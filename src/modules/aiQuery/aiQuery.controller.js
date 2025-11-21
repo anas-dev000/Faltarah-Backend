@@ -1,16 +1,32 @@
 // ==========================================
-// aiQuery.controller.js - Enhanced Controller
+// aiQuery.controller.js - Request Handlers
 // ==========================================
+// وظيفة الملف: معالجة جميع طلبات الـ API الخاصة بـ AI Query
+// - استقبال الطلبات من العملاء
+// - التحقق من صحة البيانات
+// - استدعاء خدمات الأعمال
+// - إرسال الردود المناسبة
 
 import * as aiQueryService from "./aiQuery.service.js";
 
 /**
  * معالجة الاستعلام الذكي الرئيسي
  * POST /api/ai-query/query
+ *
+ * @description
+ * - يستقبل النص الخاص بالاستعلام من المستخدم
+ * - يحلل نوع الاستعلام تلقائياً (عملاء، منتجات، إلخ)
+ * - ينفذ استعلام قاعدة البيانات المناسب
+ * - ينشئ إجابة ذكية بالعربية
+ * - يسجل الاستعلام في السجل
+ *
+ * @param {Object} request - كائن الطلب
+ * @param {string} request.body.query - نص الاستعلام
+ * @returns {Object} النتائج مع الإجابة الذكية
  */
 export const processQuery = async (request, reply) => {
   const { query } = request.body;
-  const currentUser = request.user;
+  const currentUser = request.user; // المستخدم الحالي من JWT
 
   if (!query || query.trim().length === 0) {
     return reply.status(400).send({

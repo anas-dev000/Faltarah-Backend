@@ -610,3 +610,19 @@ model SavedQuerySuggestion {
   @@index([companyId])
   @@map("saved_query_suggestions")
 }
+
+// Embedding store for RAG (represents the runtime table used by vectorStore.js)
+model EmbeddingStore {
+  id        Int       @id @default(autoincrement()) @map("id")
+  companyId Int?      @map("company_id")
+  entity    String?   @db.VarChar(50)
+  rowId     Int?      @map("row_id")
+  text      String?   @db.Text
+  embedding Float[]
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@index([companyId])
+  @@index([entity])
+  @@index([rowId])
+  @@map("embedding_store")
+}

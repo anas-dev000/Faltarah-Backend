@@ -1,10 +1,37 @@
 // ==========================================
-// aiQuery.repository.js
-// Database queries for AI Smart Query
+// aiQuery.repository.js - Data Access Layer
 // ==========================================
+// وظيفة الملف: كل التفاعل مع قاعدة البيانات
+//
+// المسؤوليات:
+// - بناء استعلامات قاعدة البيانات
+// - حفظ وجلب البيانات
+// - تطبيق عزل المستأجرين (Multi-tenant)
+// - تصفية البيانات حسب الشركة والمستخدم
+//
+// الدوال الرئيسية:
+// - createQueryHistory: حفظ الاستعلام في السجل
+// - getQueryHistory: جلب سجل الاستعلامات
+// - buildCustomerQuery: بناء استعلام العملاء
+// - buildProductQuery: بناء استعلام المنتجات
+// - ... (ودوال مماثلة لكل نوع)
 
 /**
  * حفظ استعلام في السجل
+ *
+ * @description
+ * تسجيل الاستعلام الذي قام به المستخدم لأغراض التتبع والإحصائيات
+ * ويتم حفظ:
+ * - نص الاستعلام الأصلي
+ * - نوع الاستعلام المكتشف
+ * - النتائج (في صيغة JSON)
+ * - عدد النتائج
+ * - حالة التنفيذ (نجح/فشل)
+ * - وقت التنفيذ (milliseconds)
+ *
+ * @param {Object} prisma - عميل Prisma
+ * @param {Object} data - بيانات الاستعلام
+ * @returns {Promise<Object>} السجل المحفوظ
  */
 export const createQueryHistory = async (prisma, data) => {
   return prisma.aIQueryHistory.create({
@@ -24,6 +51,16 @@ export const createQueryHistory = async (prisma, data) => {
 
 /**
  * جلب سجل الاستعلامات
+ *
+ * @description
+ * جلب جميع الاستعلامات السابقة للمستخدم الحالي
+ * ويتم التصفية حسب:
+ * - معرف المستخدم
+ * - معرف الشركة (عزل البيانات)
+ * - فترة زمنية محددة (اختياري)
+ *
+ * @param {Object} prisma - عميل Prisma
+ * @param {number} userId - معرف المستخدم
  */
 export const getQueryHistory = async (
   prisma,
@@ -137,7 +174,8 @@ export const queryProducts = async (prisma, filters, companyId, role) => {
         },
       },
     },
-    orderBy: { createdAt: "desc" },
+    // Order by `id` because `product` model does not define `createdAt`
+    orderBy: { id: "desc" },
     take: 100,
   });
 };
@@ -168,7 +206,8 @@ export const queryAccessories = async (prisma, filters, companyId, role) => {
         },
       },
     },
-    orderBy: { createdAt: "desc" },
+    // Accessory model doesn't include `createdAt` in schema, order by `id`
+    orderBy: { id: "desc" },
     take: 100,
   });
 };
