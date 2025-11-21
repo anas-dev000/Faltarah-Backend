@@ -126,6 +126,7 @@ export const updateCompany = async (prisma, id, data) => {
       id: true,
       name: true,
       logo: true,
+      logoPublicId: true,
       address: true,
       email: true,
       phone: true,

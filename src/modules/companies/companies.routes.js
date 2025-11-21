@@ -58,7 +58,7 @@ export default async function companyRoutes(fastify) {
     preHandler: [
       authenticate,
       authorize(["manager", "developer"]),
-      validateBody(updateCompanySchema),
+      // validateBody(updateCompanySchema),
     ],
     handler: companyController.update,
   });

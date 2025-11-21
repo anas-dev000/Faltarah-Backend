@@ -118,6 +118,7 @@ model Company {
   id                     Int       @id @default(autoincrement()) @map("company_id")
   name                   String    @unique @db.VarChar(255)
   logo                   String?   @db.VarChar(500)
+  logoPublicId           String?  @map("id_logo_public_id") @db.VarChar(255)
   address                String?   @db.Text
   email                  String?   @db.VarChar(255)
   phone                  String?   @db.VarChar(15)

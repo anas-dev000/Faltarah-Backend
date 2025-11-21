@@ -97,20 +97,32 @@ export const createNewCompany = async (prisma, data, currentUser) => {
 export const updateExistingCompany = async (prisma, id, data, currentUser) => {
   const { role, companyId } = currentUser;
 
+  // Validate id
+  if (!id || isNaN(id)) {
+    throw new AppError("Invalid company ID", 400);
+  }
+
   // Check if company exists and user has access
   let targetCompany;
 
   if (role === "developer") {
-    targetCompany = await companyRepo.findCompanyById(prisma, id, null);
+    targetCompany = await prisma.company.findUnique({
+      where: { id: Number(id) },
+    });
   } else if (role === "manager") {
     // Manager can only update their own company
-    if (id !== companyId) {
+    if (Number(id) !== companyId) {
       throw new AppError(
         "Forbidden: You can only update your own company",
         403
       );
     }
-    targetCompany = await companyRepo.findCompanyById(prisma, id, companyId);
+    targetCompany = await prisma.company.findFirst({
+      where: { 
+        id: Number(id),
+        id: companyId 
+      },
+    });
   } else {
     // Employee cannot update companies
     throw new AppError("Forbidden: Employees cannot update companies", 403);
@@ -122,34 +134,73 @@ export const updateExistingCompany = async (prisma, id, data, currentUser) => {
 
   // Check if new name already exists (if name is being changed)
   if (data.name && data.name !== targetCompany.name) {
-    const nameExists = await companyRepo.findCompanyByName(
-      prisma,
-      data.name,
-      id
-    );
+    const nameExists = await prisma.company.findFirst({
+      where: {
+        name: data.name,
+        id: { not: Number(id) }
+      }
+    });
+    
     if (nameExists) {
       throw new AppError("Company name already exists", 409);
     }
   }
 
-  const updateData = { ...data };
+  const updateData = {};
+
+  // Handle all fields
+  if (data.name !== undefined && data.name !== null) {
+    updateData.name = data.name.trim();
+  }
+  if (data.address !== undefined && data.address !== null) {
+    updateData.address = data.address.trim();
+  }
+  if (data.email !== undefined && data.email !== null) {
+    updateData.email = data.email.trim();
+  }
+  if (data.phone !== undefined && data.phone !== null) {
+    updateData.phone = data.phone.trim();
+  }
+  if (data.logo !== undefined && data.logo !== null) {
+    updateData.logo = data.logo;
+  }
+  if (data.logoPublicId !== undefined && data.logoPublicId !== null) {
+    updateData.logoPublicId = data.logoPublicId;
+  }
 
   // Convert subscriptionExpiryDate to Date object if provided
-  if (updateData.subscriptionExpiryDate) {
-    updateData.subscriptionExpiryDate = new Date(
-      updateData.subscriptionExpiryDate
-    );
+  if (data.subscriptionExpiryDate) {
+    updateData.subscriptionExpiryDate = new Date(data.subscriptionExpiryDate);
   }
 
   // Manager cannot update subscription expiry date
-  if (role === "manager" && updateData.subscriptionExpiryDate) {
+  if (role === "manager" && data.subscriptionExpiryDate) {
     throw new AppError(
       "Forbidden: Only developers can update subscription expiry date",
       403
     );
   }
 
-  return companyRepo.updateCompany(prisma, id, updateData);
+  // Check if there are fields to update
+  if (Object.keys(updateData).length === 0) {
+    throw new AppError("No fields to update", 400);
+  }
+
+  return prisma.company.update({
+    where: { id: Number(id) },
+    data: updateData,
+    select: {
+      id: true,
+      name: true,
+      logo: true,
+      logoPublicId: true,
+      address: true,
+      email: true,
+      phone: true,
+      subscriptionExpiryDate: true,
+      createdAt: true,
+    },
+  });
 };
 
 /**

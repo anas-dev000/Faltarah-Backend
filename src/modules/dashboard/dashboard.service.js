@@ -49,6 +49,13 @@ export const getLowStockProducts = async (prisma, currentUser) => {
   return await dashboardRepository.getLowStockProductsCount(prisma, targetCompanyId);
 };
 
+export const getLowStockAccessories = async (prisma, currentUser) => {
+  const { role, companyId } = currentUser;
+  
+  const targetCompanyId = role === "developer" ? null : companyId;  
+  
+  return await dashboardRepository.getLowStockAccessoriesCount(prisma, targetCompanyId);
+};
 /**
  * Get monthly revenue
  */
