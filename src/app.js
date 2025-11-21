@@ -8,6 +8,8 @@ import corsPlugin from "./plugins/cors.js";
 import helmetPlugin from "./plugins/helmet.js";
 import fastifyCookie from "@fastify/cookie";
 import fastifyMultipart from "@fastify/multipart";
+import fastifyRawBody from "fastify-raw-body"; // NEW
+
 // Routes
 import authRoutes from "./modules/auth/auth.routes.js";
 import userRoutes from "./modules/users/users.routes.js";
@@ -24,6 +26,8 @@ import serviceRoutes from "./modules/services/services.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import installmentPaymentsRoutes from "./modules/installmentPayments/installmentPayments.routes.js";
 import pdfRoutes from "./modules/pdf/pdf.routes.js";
+import subscriptionRoutes from "./modules/subscriptions/subscriptions.routes.js";
+
 export async function buildApp(opts = {}) {
   const app = Fastify({
     logger: {
@@ -39,9 +43,12 @@ export async function buildApp(opts = {}) {
             }
           : undefined,
     },
+    bodyLimit: 1048576 * 2, // 2MB
+    trustProxy: true,
     ...opts,
   });
 
+  // Register plugins
   await app.register(corsPlugin);
   await app.register(helmetPlugin);
 
@@ -57,6 +64,46 @@ export async function buildApp(opts = {}) {
       files: 1, // Max 1 file
     },
   });
+
+  // NEW: Register raw body plugin for Stripe webhooks
+  // Register raw body for webhooks
+  await app.register(fastifyRawBody, {
+    field: "rawBody",
+    global: false,
+    encoding: "utf8",
+    runFirst: true,
+    routes: ["/api/subscriptions/webhook"],
+  });
+
+  // Global middleware for subscription info (doesn't block access)
+  app.addHook("onRequest", async (request, reply) => {
+    // Skip auth routes and public routes
+    const publicRoutes = [
+      "/api/auth/login",
+      "/api/auth/signup",
+      "/api/auth/verify-otp",
+      "/api/auth/resend-otp",
+      "/api/auth/forgot-password",
+      "/api/auth/reset-password",
+      "/api/subscriptions/webhook",
+      "/api/subscriptions/plans",
+    ];
+
+    if (publicRoutes.some((route) => request.url.startsWith(route))) {
+      return;
+    }
+
+    // For authenticated routes, add subscription info
+    if (request.headers.authorization) {
+      try {
+        await authenticate(request, reply);
+        await checkSubscriptionInfo(request, reply);
+      } catch (error) {
+        // Continue even if there's an error
+      }
+    }
+  });
+
   // Health Check
   app.get("/", async () => {
     return { status: "ok", timestamp: new Date().toISOString() };
@@ -66,6 +113,7 @@ export async function buildApp(opts = {}) {
   await app.register(authRoutes, { prefix: "/api/auth" });
   await app.register(userRoutes, { prefix: "/api/users" });
   await app.register(companyRoutes, { prefix: "/api/companies" });
+  await app.register(subscriptionRoutes, { prefix: "/api/subscriptions" });
   await app.register(productRoutes, { prefix: "/api/products" });
   await app.register(accessoryRoutes, { prefix: "/api/accessories" });
   await app.register(suppliersRoutes, { prefix: "/api/suppliers" });
@@ -77,10 +125,10 @@ export async function buildApp(opts = {}) {
   await app.register(invoicesRoutes, { prefix: "/api/invoices" });
   await app.register(customerRoutes, { prefix: "/api/customers" });
   await app.register(employeeRoutes, { prefix: "/api/employees" });
-  await app.register(serviceRoutes,{prefix:"/api/services"})
+  await app.register(serviceRoutes, { prefix: "/api/services" });
   await app.register(dashboardRoutes, { prefix: "/api/dashboard" });
-  await app.register(pdfRoutes,{prefix:'/api/pdf'})
-  
+  await app.register(pdfRoutes, { prefix: "/api/pdf" });
+
   // --- Error Handler ---
   app.setErrorHandler(errorHandler);
 

@@ -167,7 +167,6 @@ export const updateCompanySubscription = async (
 ) => {
   const { role } = currentUser;
 
-  // Only developers can update subscription dates
   if (role !== "developer") {
     throw new AppError(
       "Forbidden: Only developers can update subscription expiry dates",
@@ -175,18 +174,29 @@ export const updateCompanySubscription = async (
     );
   }
 
-  // Check if company exists
   const company = await companyRepo.findCompanyById(prisma, id, null);
   if (!company) {
     throw new AppError("Company not found", 404);
   }
 
+  const currentExpiry = new Date(company.subscriptionExpiryDate);
+  const newDate = new Date(newExpiryDate);
+
+  // 🔥 منع تقليل الاشتراك
+  if (newDate < currentExpiry) {
+    throw new AppError(
+      `Cannot reduce subscription period. Current expiry is ${currentExpiry.toISOString().split('T')[0]}`,
+      400
+    );
+  }
+
   const updateData = {
-    subscriptionExpiryDate: new Date(newExpiryDate),
+    subscriptionExpiryDate: newDate,
   };
 
   return companyRepo.updateCompany(prisma, id, updateData);
 };
+
 
 /**
  * ✅ Delete company with cascading deletion (Developer only)

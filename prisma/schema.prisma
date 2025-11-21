@@ -11,7 +11,108 @@ datasource db {
 }
 
 // =====================================================
-// Company Entity
+// Subscription Plans
+// =====================================================
+model SubscriptionPlan {
+  id              Int      @id @default(autoincrement()) @map("plan_id")
+  name            String   @db.VarChar(100) // "Basic", "Pro", "Enterprise"
+  nameAr          String   @map("name_ar") @db.VarChar(100)
+  description     String?  @db.Text
+  descriptionAr   String?  @map("description_ar") @db.Text
+  price           Decimal  @db.Decimal(10, 2)
+  durationDays    Int      @map("duration_days") // 30, 90, 365
+  features        Json     @default("[]") // JSON array of features
+  isActive        Boolean  @default(true) @map("is_active")
+  displayOrder    Int      @default(0) @map("display_order")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  // Relations
+  subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+// =====================================================
+// Subscription Invoices
+// =====================================================
+model SubscriptionInvoice {
+  id              Int      @id @default(autoincrement()) @map("invoice_id")
+  companyId       Int      @map("company_id")
+  subscriptionId  Int?     @map("subscription_id")
+  planName        String   @map("plan_name") @db.VarChar(100)
+  amount          Decimal  @db.Decimal(10, 2)
+  durationDays    Int      @map("duration_days")
+  paymentMethod   String   @map("payment_method") @db.VarChar(50) // "stripe", "cash", "bank_transfer"
+  paymentStatus   String   @default("pending") @map("payment_status") @db.VarChar(20) // "pending", "paid", "failed", "refunded"
+  stripePaymentId String?  @map("stripe_payment_id") @db.VarChar(255)
+  stripeSessionId String?  @map("stripe_session_id") @db.VarChar(255)
+  paidAt          DateTime? @map("paid_at") @db.Timestamp(6)
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  // Relations
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([subscriptionId])
+  @@index([paymentStatus])
+  @@index([stripePaymentId])
+  @@map("subscription_invoices")
+}
+
+// =====================================================
+// Company Subscriptions
+// =====================================================
+model Subscription {
+  id              Int       @id @default(autoincrement()) @map("subscription_id")
+  companyId       Int       @map("company_id")
+  planId          Int       @map("plan_id")
+  status          String    @default("active") @db.VarChar(20) // "active", "expired", "cancelled"
+  startDate       DateTime  @map("start_date") @db.Timestamp(6)
+  endDate         DateTime  @map("end_date") @db.Timestamp(6)
+  autoRenew       Boolean   @default(false) @map("auto_renew")
+  cancelledAt     DateTime? @map("cancelled_at") @db.Timestamp(6)
+  cancelReason    String?   @map("cancel_reason") @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  // Relations
+  company  Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  plan     SubscriptionPlan       @relation(fields: [planId], references: [id], onDelete: Restrict)
+  invoices SubscriptionInvoice[]
+  alerts   SubscriptionAlert[]
+
+  @@index([companyId])
+  @@index([planId])
+  @@index([status])
+  @@index([endDate])
+  @@map("subscriptions")
+}
+
+// =====================================================
+// Subscription Alerts
+// =====================================================
+model SubscriptionAlert {
+  id             Int      @id @default(autoincrement()) @map("alert_id")
+  subscriptionId Int      @map("subscription_id")
+  alertType      String   @map("alert_type") @db.VarChar(50) // "expiry_7days", "expiry_3days", "expiry_1day", "expired"
+  message        String   @db.Text
+  messageAr      String   @map("message_ar") @db.Text
+  isRead         Boolean  @default(false) @map("is_read")
+  sentAt         DateTime @default(now()) @map("sent_at") @db.Timestamp(6)
+
+  // Relations
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@index([isRead])
+  @@map("subscription_alerts")
+}
+
+// =====================================================
+// Company Entity (Updated)
 // =====================================================
 model Company {
   id                     Int       @id @default(autoincrement()) @map("company_id")
@@ -20,7 +121,10 @@ model Company {
   address                String?   @db.Text
   email                  String?   @db.VarChar(255)
   phone                  String?   @db.VarChar(15)
+  
+  // DEPRECATED: Use Subscription model instead
   subscriptionExpiryDate DateTime? @map("subscription_expiry_date") @db.Timestamp(6)
+  
   createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
 
   // Relations
@@ -35,6 +139,8 @@ model Company {
   invoices                    Invoice[]
   invoiceItems                InvoiceItem[]
   customerMaintenanceStatuses CustomerMaintenanceStatus[]
+  subscriptions               Subscription[]
+  subscriptionInvoices        SubscriptionInvoice[]
 
   @@map("companies")
 }

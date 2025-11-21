@@ -181,6 +181,30 @@ export const loginSchema = {
   },
 };
 
+export const loginDevSchema = {
+  email: {
+    type: "string",
+    required: true,
+    validate: (value) => {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(value)) {
+        throw new Error("Invalid email format");
+      }
+      return true;
+    },
+  },
+  password: {
+    type: "string",
+    required: true,
+    validate: (value) => {
+      if (typeof value !== "string" || value.length === 0) {
+        throw new Error("Password is required");
+      }
+      return true;
+    },
+  },
+};
+
 // Schema for the profile (limited to employees)
 export const updateProfileSchema = {
   fullName: {

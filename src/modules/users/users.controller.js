@@ -135,6 +135,36 @@ export const login = async (request, reply) => {
     });
 };
 
+
+/**
+ * Developer Login
+ */
+export const loginDev = async (request, reply) => {
+  const { email, password } = request.body;
+  const result = await userService.loginDevUser(
+    request.server.prisma,
+    email,
+    password
+  );
+
+  const isProduction = process.env.NODE_ENV === "production";
+
+  reply
+    .setCookie("token", result.token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+      path: "/",
+    })
+    .status(200)
+    .send({
+      success: true,
+      message: "Login successful",
+      data: result,
+    });
+};
+
 /**
  * User Logout
  */

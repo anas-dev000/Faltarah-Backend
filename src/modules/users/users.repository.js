@@ -81,6 +81,7 @@ export const findUserById = async (prisma, id, companyId = null) => {
           name: true,
           email: true,
           phone: true,
+          subscriptionExpiryDate: true,
         },
       },
     },

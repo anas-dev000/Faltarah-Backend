@@ -7,6 +7,7 @@ import {
   createUserSchema,
   updateUserSchema,
   loginSchema,
+  loginDevSchema,
 } from "./users.schema.js";
 import { validateSchema } from "../../shared/utils/validateSchema.js";
 import { authenticate } from "../../shared/middlewares/auth.middleware.js";
@@ -34,6 +35,14 @@ export default async function userRoutes(fastify) {
   fastify.post("/login", {
     preHandler: [validateBody(loginSchema)],
     handler: userController.login,
+  });
+
+  // ========================================
+  // Develoer login route
+  // ========================================
+  fastify.post("/logindev", {
+    preHandler: [validateBody(loginDevSchema)],
+    handler: userController.loginDev,
   });
 
   // ========================================

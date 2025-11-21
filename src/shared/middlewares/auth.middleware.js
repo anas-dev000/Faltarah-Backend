@@ -24,24 +24,39 @@ export async function authenticate(request, reply) {
     }
 
     // 3) Verify token
-    try {
-      const decoded = await verifyToken(token);
-      request.user = {
-        userId: decoded.userId,
-        email: decoded.email,
-        role: decoded.role,
-        companyId: decoded.companyId,
-      };
-    } catch (err) {
+    const decoded = await verifyToken(token);
+
+    const user = await request.server.prisma.user.findUnique({
+      where: { id: decoded.userId },
+      include: {
+        company: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
       return reply.status(401).send({
         success: false,
-        error: "Unauthorized: Invalid token",
+        error: "User not found",
       });
     }
+
+    request.user = {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      companyId: user.companyId,
+      company: user.company,
+    };
   } catch (error) {
-    return reply.status(500).send({
+    return reply.status(401).send({
       success: false,
-      error: "Authentication error",
+      error: "Unauthorized: Invalid token. Please log in to get access.",
     });
   }
 }
