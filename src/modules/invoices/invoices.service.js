@@ -173,6 +173,45 @@ export async function createInvoice(prisma, data, currentUser) {
     }
   }
 
+  // التحقق من المبالغ المدفوعة
+  const totalAmount = parseFloat(data.totalAmount);
+  const discountAmount = parseFloat(data.discountAmount || 0);
+  const netAmount = totalAmount - discountAmount;
+  
+  const paidAtContract = parseFloat(data.paidAtContract || 0);
+  const paidAtInstallation = parseFloat(data.paidAtInstallation || 0);
+  const totalPaid = paidAtContract + paidAtInstallation;
+
+  // التحقق من أن المبالغ المدفوعة لا تتجاوز صافي المبلغ
+  if (totalPaid > netAmount) {
+    throw new AppError(
+      `Total paid amount (${totalPaid}) cannot exceed net invoice amount (${netAmount})`,
+      400,
+      ERROR_CODES.VALIDATION_ERROR
+    );
+  }
+
+  // التحقق الخاص بالبيع النقدي
+  if (data.saleType === "Cash") {
+    // في حالة البيع النقدي، يجب أن يكون المبلغ المدفوع مساوياً لصافي المبلغ
+    if (totalPaid !== netAmount) {
+      throw new AppError(
+        `For cash sales, total paid amount (${totalPaid}) must equal net invoice amount (${netAmount})`,
+        400,
+        ERROR_CODES.VALIDATION_ERROR
+      );
+    }
+  } else if (data.saleType === "Installment") {
+    // في حالة البيع بالتقسيط، يجب أن يكون المبلغ المدفوع أقل من أو يساوي صافي المبلغ
+    if (totalPaid > netAmount) {
+      throw new AppError(
+        `For installment sales, total paid amount (${totalPaid}) cannot exceed net invoice amount (${netAmount})`,
+        400,
+        ERROR_CODES.VALIDATION_ERROR
+      );
+    }
+  }
+
   const invoiceData = {
     ...data,
     companyId: targetCompanyId,
