@@ -258,6 +258,14 @@ export const loginUser = async (prisma, email, password) => {
     throw new AppError("Invalid email or password", 401);
   }
 
+  // Block Developer role from /login route
+  if (user.role === "developer") {
+    throw new AppError(
+      "This route is for Managers and Employees only.",
+      403
+    );
+  }
+
   // Checking user status
   if (user.status !== "Active") {
     throw new AppError(
