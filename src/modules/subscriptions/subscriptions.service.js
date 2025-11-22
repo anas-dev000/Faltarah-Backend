@@ -199,10 +199,13 @@ export const createCheckoutSession = async (
 // ==========================================
 
 export const handleStripeWebhook = async (prisma, event) => {
-
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
 
+    const invoice = await subRepo.findInvoiceByStripeSession(
+      prisma,
+      session.id
+    );
 
     if (!invoice) {
       throw new AppError("Invoice not found for this session", 404);
