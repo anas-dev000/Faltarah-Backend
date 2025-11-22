@@ -142,6 +142,8 @@ model Company {
   customerMaintenanceStatuses CustomerMaintenanceStatus[]
   subscriptions               Subscription[]
   subscriptionInvoices        SubscriptionInvoice[]
+  aiQueries                   AIQueryHistory[]
+  savedSuggestions SavedQuerySuggestion[]
 
   @@map("companies")
 }
@@ -162,6 +164,8 @@ model User {
   // Relations
   company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
   passwordResets PasswordReset[]
+  aiQueries AIQueryHistory[]
+  savedSuggestions SavedQuerySuggestion[]
 
   @@index([companyId])
   @@map("users")
@@ -540,3 +544,99 @@ model CustomerMaintenanceStatus {
   @@index([status])
   @@map("customer_maintenance_statuses")
 }
+
+
+// =====================================================
+// AI Query History - تخزين استعلامات المستخدمين
+// =====================================================
+model AIQueryHistory {
+  id          Int      @id @default(autoincrement()) @map("query_id")
+  userId      Int      @map("user_id")
+  companyId   Int      @map("company_id")
+  
+  // النص الأصلي من المستخدم
+  queryText   String   @map("query_text") @db.Text
+  
+  // نوع البيانات المطلوبة
+  queryType   String   @map("query_type") @db.VarChar(50) // "customers", "employees", "products", etc.
+  
+  // الاستعلام المُنشأ من AI (optional - for future SQL generation)
+  generatedSQL String?  @map("generated_sql") @db.Text
+  
+  // النتائج (JSON)
+  results     Json?    @default("[]")
+  
+  // عدد النتائج
+  resultCount Int      @default(0) @map("result_count")
+  
+  // حالة الاستعلام
+  status      String   @default("success") @db.VarChar(20) // "success", "error", "partial"
+  
+  // رسالة الخطأ إن وجدت
+  errorMessage String? @map("error_message") @db.Text
+  
+  // وقت التنفيذ (بالميلي ثانية)
+  executionTime Int?   @map("execution_time")
+  
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([companyId])
+  @@index([queryType])
+  @@index([createdAt])
+  @@map("ai_query_history")
+}
+
+
+// =====================================================
+// Saved Query Suggestions - الاقتراحات المحفوظة
+// =====================================================
+model SavedQuerySuggestion {
+  id        Int      @id @default(autoincrement()) @map("suggestion_id")
+  userId    Int      @map("user_id")
+  companyId Int      @map("company_id")
+  queryText String   @map("query_text") @db.Text
+  queryType String   @map("query_type") @db.VarChar(50)
+  usage     Int      @default(0) // عدد مرات الاستخدام
+  
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, queryText])
+  @@index([userId])
+  @@index([companyId])
+  @@map("saved_query_suggestions")
+}
+
+// =====================================================
+// Embedding Store - Vector Storage for RAG
+// =====================================================
+// NOTE: This table is created manually in vectorStore.js
+// Prisma model here is for querying only
+model EmbeddingStore {
+  id        Int       @id @default(autoincrement())
+  companyId Int?      @map("company_id")
+  entity    String?   @db.VarChar(50)
+  rowId     Int?      @map("row_id")
+  text      String?   @db.Text
+  
+  // ⚠️ IMPORTANT: PostgreSQL stores as DOUBLE PRECISION[]
+  // Prisma reads it as Float array
+  embedding Float[]
+  
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@index([companyId, entity], name: "idx_company_entity")
+  @@index([companyId])
+  @@index([entity])
+  @@map("embedding_store")
+}
+
+
