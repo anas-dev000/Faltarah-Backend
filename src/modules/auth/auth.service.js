@@ -76,69 +76,200 @@ export const initiateSignup = async (prisma, data) => {
 };
 
 export const verifyOTP = async (prisma, email, otp) => {
+  // 1. التحقق من OTP
   const pendingUser = await authRepo.findPendingUserByOTP(prisma, email, otp);
 
   if (!pendingUser) {
     throw new AppError("Invalid or expired OTP", 400);
   }
 
-  await authRepo.updatePendingUserVerification(prisma, pendingUser.id);
+  // 2. التحقق من أن المستخدم لم يتم تفعيله مسبقاً
+  if (pendingUser.isVerified) {
+    throw new AppError(
+      "البريد الإلكتروني تم تفعيله بالفعل. يرجى انتظار موافقة الإدارة.",
+      400
+    );
+  }
 
-  const subscriptionExpiryDate = new Date();
-  subscriptionExpiryDate.setDate(subscriptionExpiryDate.getDate() + 10);
+  try {
+    console.log("🔄 Starting OTP verification transaction...");
 
-  const company = await prisma.company.create({
-    data: {
-      name: pendingUser.companyName,
-      email: pendingUser.companyEmail,
-      phone: pendingUser.companyPhone,
-      address: pendingUser.companyAddress,
-      subscriptionExpiryDate,
-    },
-  });
+    // ✅ استخدام Transaction للتأكد من نجاح جميع العمليات
+    const result = await prisma.$transaction(
+      async (tx) => {
+        console.log("✅ Step 1: Updating pending user verification...");
+        // 1. تحديث حالة المستخدم المعلق
+        await tx.pendingUser.update({
+          where: { id: pendingUser.id },
+          data: {
+            isVerified: true,
+            verifiedAt: new Date(),
+          },
+        });
 
-  const user = await prisma.user.create({
-    data: {
-      companyId: company.id,
-      fullName: pendingUser.fullName,
-      email: pendingUser.email,
-      passwordHash: pendingUser.passwordHash,
-      role: "manager",
-      status: "Active",
-    },
-    include: {
-      company: {
-        select: {
-          id: true,
-          name: true,
-          subscriptionExpiryDate: true,
-        },
+        console.log("✅ Step 2: Finding Trial plan...");
+        // 2. الحصول على خطة Trial
+        const trialPlan = await tx.subscriptionPlan.findFirst({
+          where: { name: "Trial", isActive: true },
+        });
+
+        if (!trialPlan) {
+          console.error("❌ Trial plan not found!");
+          throw new AppError("Trial plan not found in system", 500);
+        }
+
+        console.log(`✅ Found trial plan: ${trialPlan.name} (${trialPlan.durationDays} days)`);
+
+        // 3. حساب تواريخ الاشتراك التجريبي
+        const startDate = new Date();
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + trialPlan.durationDays);
+
+        console.log(`✅ Step 3: Creating company with trial until ${endDate.toISOString()}...`);
+        // 4. إنشاء الشركة
+        const company = await tx.company.create({
+          data: {
+            name: pendingUser.companyName,
+            email: pendingUser.companyEmail,
+            phone: pendingUser.companyPhone,
+            address: pendingUser.companyAddress,
+            subscriptionExpiryDate: endDate,
+          },
+        });
+
+        console.log(`✅ Company created: ${company.name} (ID: ${company.id})`);
+
+        console.log("✅ Step 4: Creating user...");
+        // 5. إنشاء المستخدم (Manager)
+        const user = await tx.user.create({
+          data: {
+            companyId: company.id,
+            fullName: pendingUser.fullName,
+            email: pendingUser.email,
+            passwordHash: pendingUser.passwordHash,
+            role: "manager",
+            status: "Active",
+          },
+        });
+
+        console.log(`✅ User created: ${user.fullName} (ID: ${user.id})`);
+
+        console.log("✅ Step 5: Creating trial subscription...");
+        // 6. إنشاء الاشتراك التجريبي
+        const trialSubscription = await tx.subscription.create({
+          data: {
+            companyId: company.id,
+            planId: trialPlan.id,
+            status: "active",
+            startDate: startDate,
+            endDate: endDate,
+            autoRenew: false,
+          },
+          include: {
+            plan: true,
+          },
+        });
+
+        console.log(`✅ Trial subscription created (ID: ${trialSubscription.id})`);
+
+        console.log("✅ Step 6: Creating trial invoice...");
+        // 7. إنشاء فاتورة الاشتراك التجريبي
+        const invoice = await tx.subscriptionInvoice.create({
+          data: {
+            companyId: company.id,
+            subscriptionId: trialSubscription.id,
+            planName: trialPlan.name,
+            amount: 0.0,
+            durationDays: trialPlan.durationDays,
+            paymentMethod: "trial",
+            paymentStatus: "paid",
+            paidAt: startDate,
+            notes: "Trial subscription - Auto-created on signup verification",
+          },
+        });
+
+        console.log(`✅ Trial invoice created (ID: ${invoice.id})`);
+
+        return {
+          user,
+          company,
+          subscription: trialSubscription,
+        };
       },
-    },
-  });
+      {
+        maxWait: 10000, // 10 seconds
+        timeout: 20000, // 20 seconds
+      }
+    );
 
-  await authRepo.deletePendingUser(prisma, pendingUser.id);
+    console.log("✅ Transaction completed successfully!");
 
-  await sendAdminNotificationEmail({
-    companyName: company.name,
-    fullName: user.fullName,
-    email: user.email,
-    phone: company.phone,
-    address: company.address,
-    subscriptionExpiryDate: company.subscriptionExpiryDate,
-  });
+    // 8. ✅ الآن نحذف المستخدم المعلق بعد نجاح كل شيء
+    console.log("✅ Step 7: Deleting pending user...");
+    await authRepo.deletePendingUser(prisma, pendingUser.id);
 
-  await sendWelcomeEmail(user.email, user.fullName, company.name);
+    console.log("✅ Step 8: Sending emails...");
+    // 9. إرسال الإيميلات (خارج الـ transaction)
+    try {
+      await Promise.allSettled([
+        sendAdminNotificationEmail({
+          companyName: result.company.name,
+          fullName: result.user.fullName,
+          email: result.user.email,
+          phone: result.company.phone || "",
+          address: result.company.address || "",
+          subscriptionExpiryDate: result.company.subscriptionExpiryDate,
+        }),
+        sendWelcomeEmail(
+          result.user.email,
+          result.user.fullName,
+          result.company.name
+        ),
+      ]);
+      console.log("✅ Emails sent successfully");
+    } catch (emailError) {
+      // لا نريد أن يفشل التسجيل بسبب الإيميلات
+      console.error("⚠️ Email sending failed (non-critical):", emailError);
+    }
 
-  return {
-    message: "Account verified successfully! You can now login.",
-    user: {
-      id: user.id,
-      fullName: user.fullName,
-      email: user.email,
-      companyName: company.name,
-    },
-  };
+    console.log("✅ OTP verification completed!");
+
+    return {
+      message:
+        "Account verified successfully with trial subscription! You can now login.",
+      user: {
+        id: result.user.id,
+        fullName: result.user.fullName,
+        email: result.user.email,
+        companyName: result.company.name,
+      },
+      subscription: {
+        plan: result.subscription.plan.nameAr,
+        status: result.subscription.status,
+        startDate: result.subscription.startDate,
+        endDate: result.subscription.endDate,
+        daysRemaining: result.subscription.plan.durationDays,
+      },
+    };
+  } catch (error) {
+    console.error("❌ Error in OTP verification:", error);
+    
+    // لو الـ error من AppError نرميه زي ما هو
+    if (error instanceof AppError) {
+      throw error;
+    }
+
+    // لو error من Prisma
+    if (error.code) {
+      console.error("❌ Prisma error code:", error.code);
+      console.error("❌ Prisma error meta:", error.meta);
+    }
+
+    throw new AppError(
+      error.message || "Failed to verify OTP and create account",
+      500
+    );
+  }
 };
 
 export const resendOTP = async (prisma, email) => {
@@ -148,10 +279,15 @@ export const resendOTP = async (prisma, email) => {
     throw new AppError("No pending registration found for this email", 404);
   }
 
+  // ✅ لو المستخدم تم تفعيله، يبقى الحساب جاهز
   if (pendingUser.isVerified) {
-    throw new AppError("Email already verified", 400);
+    throw new AppError(
+      "تم تفعيل حسابك بالفعل! يمكنك تسجيل الدخول الآن",
+      400
+    );
   }
 
+  // ✅ إنشاء OTP جديد
   const otp = generateOTP();
   const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -160,7 +296,13 @@ export const resendOTP = async (prisma, email) => {
     data: { otp, otpExpiry },
   });
 
-  await sendOTPEmail(email, otp, pendingUser.fullName);
+  // إرسال OTP
+  try {
+    await sendOTPEmail(email, otp, pendingUser.fullName);
+  } catch (emailError) {
+    console.error("⚠️ Failed to send OTP email:", emailError);
+    throw new AppError("Failed to send OTP email. Please try again.", 500);
+  }
 
   return {
     message: "New OTP sent to your email",
