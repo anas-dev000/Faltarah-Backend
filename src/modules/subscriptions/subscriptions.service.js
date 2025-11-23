@@ -154,14 +154,19 @@ export const getSubscriptionStatistics = async (
     _count: true,
   });
 
-  // Active subscriptions count
+  // Active subscriptions count (non-trial)
   const activeSubscriptions = await prisma.subscription.count({
     where: {
       status: "active",
       endDate: {
-        gte: now,
+        gte: now
       },
-    },
+      plan: {
+        name: {
+          not: 'Trial'
+        }
+      }
+    }
   });
 
   // Expired subscriptions count
@@ -171,21 +176,93 @@ export const getSubscriptionStatistics = async (
     },
   });
 
-  // Trial companies (companies in trial period)
-  const trialCompanies = await prisma.company.count({
+  // ✅ Trial companies count
+  const trialCompanies = await prisma.subscription.count({
     where: {
-      subscriptionExpiryDate: {
-        gte: now,
+      status: 'active',
+      endDate: {
+        gte: now
       },
-      subscriptions: {
-        none: {}, // No paid subscriptions yet
-      },
-    },
+      plan: {
+        name: 'Trial'
+      }
+    }
   });
 
-  // Recent subscriptions (last 10)
+  // ✅ NEW: Subscriptions expiring soon (within 7 days)
+  const sevenDaysFromNow = new Date(now);
+  sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+
+  const expiringSoon = await prisma.subscription.findMany({
+    where: {
+      status: 'active',
+      endDate: {
+        gte: now,
+        lte: sevenDaysFromNow
+      }
+    },
+    include: {
+      company: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          logo: true
+        }
+      },
+      plan: true
+    },
+    orderBy: {
+      endDate: 'asc'
+    }
+  });
+
+  // ✅ Calculate days remaining for each expiring subscription
+  const expiringSoonWithDays = expiringSoon.map(sub => {
+    const endDate = new Date(sub.endDate);
+    const timeDiff = endDate.getTime() - now.getTime();
+    const daysRemaining = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+    
+    return {
+      ...sub,
+      daysRemaining: Math.max(0, daysRemaining)
+    };
+  });
+
+  // ✅ NEW: Expired subscriptions that weren't renewed
+  const expiredNotRenewed = await prisma.subscription.findMany({
+    where: {
+      status: 'expired',
+      endDate: {
+        lt: now
+      }
+    },
+    include: {
+      company: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          logo: true
+        }
+      },
+      plan: true
+    },
+    orderBy: {
+      endDate: 'desc'
+    },
+    take: 20
+  });
+
+  // ✅ Recent active subscriptions (all plans)
   const recentSubscriptions = await prisma.subscription.findMany({
-    take: 10,
+    where: {
+      status: 'active',
+      endDate: {
+        gte: now
+      }
+    },
+    take: 50, // Increased to allow filtering by plan
     orderBy: {
       createdAt: "desc",
     },
@@ -195,12 +272,46 @@ export const getSubscriptionStatistics = async (
           id: true,
           name: true,
           email: true,
-        },
+          logo: true
+        }
       },
       plan: true,
     },
   });
 
+  // ✅ Group recent subscriptions by plan
+  const subscriptionsByPlan = {
+    all: recentSubscriptions,
+    monthly: recentSubscriptions.filter(s => s.plan.name === 'Monthly'),
+    quarterly: recentSubscriptions.filter(s => s.plan.name === 'Quarterly'),
+    yearly: recentSubscriptions.filter(s => s.plan.name === 'Yearly')
+  };
+    // ✅ NEW: جلب الشركات التجريبية (Trial) بالتفاصيل
+  const trialSubscriptionsRaw = await prisma.subscription.findMany({
+    where: {
+      status: 'active',
+      endDate: { gte: now },
+      plan: { name: 'Trial' }
+    },
+    include: {
+      company: {
+        select: { id: true, name: true, email: true, logo: true }
+      },
+      plan: true
+    },
+    orderBy: { endDate: 'asc' }
+  });
+
+  // حساب الأيام المتبقية لكل شركة تجريبية
+  const trialSubscriptions = trialSubscriptionsRaw.map(sub => {
+    const endDate = new Date(sub.endDate);
+    const timeDiff = endDate.getTime() - now.getTime();
+    const daysRemaining = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+    return {
+      ...sub,
+      daysRemaining: Math.max(0, daysRemaining)
+    };
+  });
   return {
     period: {
       month: currentMonth,
@@ -224,6 +335,10 @@ export const getSubscriptionStatistics = async (
       trial: trialCompanies,
     },
     recent: recentSubscriptions,
+    recentByPlan: subscriptionsByPlan, // ✅ NEW: Grouped by plan
+    expiringSoon: expiringSoonWithDays, // ✅ NEW: With days remaining
+    expiredNotRenewed: expiredNotRenewed, // ✅ NEW: Expired & not renewed
+    trialSubscriptions: trialSubscriptions
   };
 };
 
@@ -405,6 +520,11 @@ export const handleStripeWebhook = async (prisma, event) => {
       endDate,
     });
 
+    // ✅ تحديث subscriptionExpiryDate في جدول الشركات
+    await companyRepo.updateCompany(prisma, invoice.companyId, {
+      subscriptionExpiryDate: endDate,
+    });
+
     // ربط الفاتورة بالاشتراك
     await subRepo.updateInvoicePaymentStatus(prisma, invoice.id, {
       subscriptionId: subscription.id,
@@ -486,6 +606,11 @@ export const processCashPayment = async (
     status: "active",
     startDate,
     endDate,
+  });
+
+  // ✅ تحديث subscriptionExpiryDate في جدول الشركات
+  await companyRepo.updateCompany(prisma, companyId, {
+    subscriptionExpiryDate: endDate,
   });
 
   // ربط الفاتورة بالاشتراك
