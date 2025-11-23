@@ -736,3 +736,307 @@ export const sendSubscriptionExpiredEmail = async (email, companyName) => {
     throw error;
   }
 };
+
+
+
+/**
+ * إرسال إيميل عرض خصم 25% (بعد 20 يوم من التسجيل)
+ */
+export const sendDiscountOfferEmail = async (email, companyName) => {
+  const mailOptions = {
+    from: `"فلترة - نظام إدارة الفلاتر" <${config.email.from}>`,
+    to: email,
+    subject: "🎁 عرض خاص! خصم 25% على جميع الباقات",
+    html: `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+          }
+          .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+          }
+          .content {
+            padding: 30px;
+            text-align: right;
+          }
+          .offer-icon {
+            text-align: center;
+            font-size: 80px;
+            margin: 20px 0;
+          }
+          .discount-box {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+            border: 3px dashed #e17055;
+            padding: 30px;
+            margin: 30px 0;
+            border-radius: 10px;
+            text-align: center;
+          }
+          .discount-box h2 {
+            margin: 0;
+            font-size: 48px;
+            color: #d63031;
+          }
+          .discount-box p {
+            margin: 10px 0 0 0;
+            font-size: 20px;
+            color: #2d3436;
+            font-weight: bold;
+          }
+          .price-comparison {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin: 20px 0;
+          }
+          .old-price {
+            font-size: 32px;
+            color: #b2bec3;
+            text-decoration: line-through;
+          }
+          .new-price {
+            font-size: 42px;
+            color: #00b894;
+            font-weight: bold;
+          }
+          .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+            color: white;
+            padding: 18px 50px;
+            text-decoration: none;
+            border-radius: 50px;
+            margin: 30px 0;
+            font-weight: bold;
+            font-size: 20px;
+            box-shadow: 0 10px 20px rgba(0, 184, 148, 0.3);
+          }
+          .warning-box {
+            background: #fff3cd;
+            border-right: 4px solid #ffc107;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 5px;
+          }
+          .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎁 عرض خاص لك!</h1>
+          </div>
+          <div class="content">
+            <div class="offer-icon">🎉</div>
+            
+            <p>عزيزي <strong>${companyName}</strong>،</p>
+            
+            <p style="font-size: 18px;">لاحظنا أنك لم تكمل الاشتراك بعد انتهاء الفترة التجريبية!</p>
+            
+            <div class="discount-box">
+              <h2>خصم 25%</h2>
+              <p>على جميع الباقات السنوية</p>
+            </div>
+            
+            <p style="text-align: center; font-size: 18px; margin: 30px 0;">
+              <strong>مثال: الباقة السنوية</strong>
+            </p>
+            
+            <div class="price-comparison">
+              <div class="old-price">2,691 جنيه</div>
+              <div style="font-size: 30px;">→</div>
+              <div class="new-price">2,018 جنيه</div>
+            </div>
+            
+            <p style="text-align: center; color: #00b894; font-weight: bold; font-size: 20px;">
+              وفر 673 جنيه! 💰
+            </p>
+            
+            <div style="text-align: center;">
+              <a href="${config.frontend.url}/subscription?discount=25" class="button">
+                احصل على الخصم الآن
+              </a>
+            </div>
+            
+            <div class="warning-box">
+              <p style="margin: 0; color: #856404;">
+                <strong>⏰ تحذير:</strong> 
+                هذا العرض متاح لمدة <strong>5 أيام فقط</strong>!<br>
+                بعد ذلك سيتم حذف جميع بياناتك نهائياً.
+              </p>
+            </div>
+            
+            <p style="background: #e7f3ff; padding: 20px; border-radius: 5px; margin: 30px 0;">
+              💡 <strong>لماذا تختار فلترة؟</strong><br>
+              • إدارة شاملة للعملاء والفواتير<br>
+              • نظام أقساط ذكي<br>
+              • تقارير تفصيلية في الوقت الفعلي<br>
+              • دعم فني متواصل
+            </p>
+          </div>
+          <div class="footer">
+            <p>© 2025 فلترة - نظام إدارة الفلاتر والتكييفات</p>
+            <p>الدعم الفني: ${config.email.supportEmail} | ${config.email.supportPhone}</p>
+            <p style="margin-top: 15px; color: #999;">
+              هذا عرض محدود لمدة 5 أيام فقط
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Discount offer email sent to ${email}`);
+  } catch (error) {
+    console.error('❌ Error sending discount email:', error);
+    throw error;
+  }
+};
+
+/**
+ * إرسال إيميل تحذير أخير قبل الحذف (بعد 20 يوم)
+ */
+export const sendFinalWarningEmail = async (email, companyName, daysLeft) => {
+  const mailOptions = {
+    from: `"فلترة - نظام إدارة الفلاتر" <${config.email.from}>`,
+    to: email,
+    subject: `⚠️ تحذير نهائي: ${daysLeft} أيام حتى حذف بياناتك!`,
+    html: `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+          }
+          .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #d63031 0%, #e17055 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+          }
+          .content {
+            padding: 30px;
+            text-align: right;
+          }
+          .warning-icon {
+            text-align: center;
+            font-size: 100px;
+            margin: 20px 0;
+          }
+          .countdown {
+            background: #ffe0e0;
+            border: 4px solid #d63031;
+            padding: 30px;
+            margin: 30px 0;
+            border-radius: 10px;
+            text-align: center;
+          }
+          .countdown h2 {
+            margin: 0;
+            font-size: 60px;
+            color: #d63031;
+          }
+          .button {
+            display: inline-block;
+            background: #00b894;
+            color: white;
+            padding: 18px 50px;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 20px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>⚠️ تحذير نهائي!</h1>
+          </div>
+          <div class="content">
+            <div class="warning-icon">🚨</div>
+            
+            <p style="font-size: 20px;">عزيزي <strong>${companyName}</strong>،</p>
+            
+            <div class="countdown">
+              <h2>${daysLeft}</h2>
+              <p style="margin: 10px 0 0 0; font-size: 24px; font-weight: bold; color: #2d3436;">
+                ${daysLeft === 1 ? 'يوم واحد' : 'أيام'} حتى حذف بياناتك نهائياً!
+              </p>
+            </div>
+            
+            <p style="font-size: 18px; color: #d63031; font-weight: bold;">
+              سيتم حذف جميع بياناتك بشكل نهائي ولا يمكن استرجاعها!
+            </p>
+            
+            <p style="background: #ffeaa7; padding: 20px; border-radius: 5px; margin: 30px 0; text-align: center;">
+              <strong style="font-size: 24px; color: #d63031;">خصم 25%</strong><br>
+              <span style="font-size: 18px;">لا يزال العرض متاحاً!</span>
+            </p>
+            
+            <div style="text-align: center; margin: 40px 0;">
+              <a href="${config.frontend.url}/subscription?discount=25" class="button">
+                احفظ بياناتك الآن!
+              </a>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Final warning email sent to ${email}`);
+  } catch (error) {
+    console.error('❌ Error sending final warning:', error);
+    throw error;
+  }
+};

@@ -41,10 +41,16 @@ export const findCompanyById = async (
   id,
   restrictToCompanyId = null
 ) => {
+  // ✅ FIXED: Build where clause properly
   const whereClause = {
-    id,
-    ...(restrictToCompanyId && { id: restrictToCompanyId }),
+    id: id, // Always use the provided id
   };
+
+  // ✅ Only add restriction if restrictToCompanyId is provided AND different from id
+  if (restrictToCompanyId !== null && restrictToCompanyId !== id) {
+    // If user is restricted to a specific company, return null if they try to access another
+    return null;
+  }
 
   return prisma.company.findFirst({
     where: whereClause,

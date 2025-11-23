@@ -43,6 +43,14 @@ export const findActiveSubscription = async (prisma, companyId) => {
     },
     include: {
       plan: true,
+      company: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          logo: true,        
+        }
+      },
       alerts: {
         where: { isRead: false },
         orderBy: { sentAt: "desc" },
@@ -61,6 +69,14 @@ export const findCompanySubscriptions = async (prisma, companyId) => {
     where: { companyId },
     include: {
       plan: true,
+      company: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          logo: true,
+        }
+      }
     },
     orderBy: { createdAt: "desc" },
   });
@@ -170,6 +186,14 @@ export const findCompanyInvoices = async (prisma, companyId) => {
           plan: true,
         },
       },
+      company: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          logo: true,
+        }
+      }
     },
     orderBy: { createdAt: "desc" },
   });
