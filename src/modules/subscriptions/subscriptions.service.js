@@ -92,6 +92,7 @@ export const getCompanySubscriptionStatus = async (prisma, companyId) => {
       id: company.id,
       name: company.name,
       email: company.email,
+      logo: company.logo,
     },
     status,
     currentSubscription: activeSubscription,
@@ -103,6 +104,164 @@ export const getCompanySubscriptionStatus = async (prisma, companyId) => {
     alertsHistory: alerts,
   };
 };
+
+
+/**
+ * Get Subscription Statistics
+ */
+export const getSubscriptionStatistics = async (prisma, month = null, year = null) => {
+  const now = new Date();
+  const currentMonth = month || now.getMonth() + 1;
+  const currentYear = year || now.getFullYear();
+
+  // Start and end of the specified month
+  const startDate = new Date(currentYear, currentMonth - 1, 1);
+  const endDate = new Date(currentYear, currentMonth, 0, 23, 59, 59);
+
+  // Total revenue this month
+  const monthlyRevenue = await prisma.subscriptionInvoice.aggregate({
+    where: {
+      paymentStatus: 'paid',
+      paidAt: {
+        gte: startDate,
+        lte: endDate
+      }
+    },
+    _sum: {
+      amount: true
+    },
+    _count: true
+  });
+
+  // Total revenue this year
+  const yearStart = new Date(currentYear, 0, 1);
+  const yearEnd = new Date(currentYear, 11, 31, 23, 59, 59);
+
+  const yearlyRevenue = await prisma.subscriptionInvoice.aggregate({
+    where: {
+      paymentStatus: 'paid',
+      paidAt: {
+        gte: yearStart,
+        lte: yearEnd
+      }
+    },
+    _sum: {
+      amount: true
+    },
+    _count: true
+  });
+
+  // Active subscriptions count
+  const activeSubscriptions = await prisma.subscription.count({
+    where: {
+      status: 'active',
+      endDate: {
+        gte: now
+      }
+    }
+  });
+
+  // Expired subscriptions count
+  const expiredSubscriptions = await prisma.subscription.count({
+    where: {
+      status: 'expired'
+    }
+  });
+
+  // Trial companies (companies in trial period)
+  const trialCompanies = await prisma.company.count({
+    where: {
+      subscriptionExpiryDate: {
+        gte: now
+      },
+      subscriptions: {
+        none: {} // No paid subscriptions yet
+      }
+    }
+  });
+
+  // Recent subscriptions (last 10)
+  const recentSubscriptions = await prisma.subscription.findMany({
+    take: 10,
+    orderBy: {
+      createdAt: 'desc'
+    },
+    include: {
+      company: {
+        select: {
+          id: true,
+          name: true,
+          email: true
+        }
+      },
+      plan: true
+    }
+  });
+
+  return {
+    period: {
+      month: currentMonth,
+      year: currentYear,
+      monthName: new Date(currentYear, currentMonth - 1).toLocaleString('ar-EG', { month: 'long' })
+    },
+    monthly: {
+      revenue: monthlyRevenue._sum.amount || 0,
+      invoicesCount: monthlyRevenue._count
+    },
+    yearly: {
+      revenue: yearlyRevenue._sum.amount || 0,
+      invoicesCount: yearlyRevenue._count
+    },
+    subscriptions: {
+      active: activeSubscriptions,
+      expired: expiredSubscriptions,
+      trial: trialCompanies
+    },
+    recent: recentSubscriptions
+  };
+};
+
+/**
+ * Get Monthly Revenue Report for the whole year
+ */
+export const getMonthlyRevenueReport = async (prisma, year) => {
+  const monthlyData = [];
+
+  for (let month = 1; month <= 12; month++) {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+
+    const monthRevenue = await prisma.subscriptionInvoice.aggregate({
+      where: {
+        paymentStatus: 'paid',
+        paidAt: {
+          gte: startDate,
+          lte: endDate
+        }
+      },
+      _sum: {
+        amount: true
+      },
+      _count: true
+    });
+
+    monthlyData.push({
+      month,
+      monthName: new Date(year, month - 1).toLocaleString('ar-EG', { month: 'long' }),
+      revenue: monthRevenue._sum.amount || 0,
+      invoicesCount: monthRevenue._count
+    });
+  }
+
+  const totalYearRevenue = monthlyData.reduce((sum, m) => sum + parseFloat(m.revenue), 0);
+
+  return {
+    year,
+    months: monthlyData,
+    totalRevenue: totalYearRevenue
+  };
+};
+
 
 // ==========================================
 // Create Stripe Checkout Session
@@ -199,10 +358,13 @@ export const createCheckoutSession = async (
 // ==========================================
 
 export const handleStripeWebhook = async (prisma, event) => {
-
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
 
+    const invoice = await subRepo.findInvoiceByStripeSession(
+      prisma,
+      session.id
+    );
 
     if (!invoice) {
       throw new AppError("Invoice not found for this session", 404);

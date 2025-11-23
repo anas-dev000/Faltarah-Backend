@@ -112,6 +112,10 @@ export async function buildApp(opts = {}) {
     return { status: "ok", timestamp: new Date().toISOString() };
   });
 
+  app.get("/api/subscriptions/webhook", async () => {
+    return { ok: true };
+  });
+
   // Register Routes
   await app.register(authRoutes, { prefix: "/api/auth" });
   await app.register(userRoutes, { prefix: "/api/users" });
