@@ -8,11 +8,21 @@ import { AppError } from "../../shared/errors/AppError.js";
 /**
  * Get all accessories with filters
  */
-export const getAllAccessories = async (prisma, currentUser, filters = {}, pagination = {}) => {
+export const getAllAccessories = async (
+  prisma,
+  currentUser,
+  filters = {},
+  pagination = {}
+) => {
   const { role, companyId } = currentUser;
   const targetCompanyId = role === "developer" ? null : companyId;
 
-  return await accessoriesRepository.findAll(prisma, targetCompanyId, filters, pagination);
+  return await accessoriesRepository.findAll(
+    prisma,
+    targetCompanyId,
+    filters,
+    pagination
+  );
 };
 
 /**
@@ -187,7 +197,6 @@ export const updateAccessory = async (prisma, id, data, currentUser) => {
   const updateData = {
     ...(data.name && { name: data.name }),
     ...(data.price !== undefined && { price: Number(data.price) }),
-    ...(data.stock !== undefined && { stock: Number(data.stock) }),
     ...(data.supplierId && { supplierId: Number(data.supplierId) }),
   };
 
