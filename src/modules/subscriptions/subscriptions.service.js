@@ -105,11 +105,14 @@ export const getCompanySubscriptionStatus = async (prisma, companyId) => {
   };
 };
 
-
 /**
  * Get Subscription Statistics
  */
-export const getSubscriptionStatistics = async (prisma, month = null, year = null) => {
+export const getSubscriptionStatistics = async (
+  prisma,
+  month = null,
+  year = null
+) => {
   const now = new Date();
   const currentMonth = month || now.getMonth() + 1;
   const currentYear = year || now.getFullYear();
@@ -121,16 +124,16 @@ export const getSubscriptionStatistics = async (prisma, month = null, year = nul
   // Total revenue this month
   const monthlyRevenue = await prisma.subscriptionInvoice.aggregate({
     where: {
-      paymentStatus: 'paid',
+      paymentStatus: "paid",
       paidAt: {
         gte: startDate,
-        lte: endDate
-      }
+        lte: endDate,
+      },
     },
     _sum: {
-      amount: true
+      amount: true,
     },
-    _count: true
+    _count: true,
   });
 
   // Total revenue this year
@@ -139,85 +142,88 @@ export const getSubscriptionStatistics = async (prisma, month = null, year = nul
 
   const yearlyRevenue = await prisma.subscriptionInvoice.aggregate({
     where: {
-      paymentStatus: 'paid',
+      paymentStatus: "paid",
       paidAt: {
         gte: yearStart,
-        lte: yearEnd
-      }
+        lte: yearEnd,
+      },
     },
     _sum: {
-      amount: true
+      amount: true,
     },
-    _count: true
+    _count: true,
   });
 
   // Active subscriptions count
   const activeSubscriptions = await prisma.subscription.count({
     where: {
-      status: 'active',
+      status: "active",
       endDate: {
-        gte: now
-      }
-    }
+        gte: now,
+      },
+    },
   });
 
   // Expired subscriptions count
   const expiredSubscriptions = await prisma.subscription.count({
     where: {
-      status: 'expired'
-    }
+      status: "expired",
+    },
   });
 
   // Trial companies (companies in trial period)
   const trialCompanies = await prisma.company.count({
     where: {
       subscriptionExpiryDate: {
-        gte: now
+        gte: now,
       },
       subscriptions: {
-        none: {} // No paid subscriptions yet
-      }
-    }
+        none: {}, // No paid subscriptions yet
+      },
+    },
   });
 
   // Recent subscriptions (last 10)
   const recentSubscriptions = await prisma.subscription.findMany({
     take: 10,
     orderBy: {
-      createdAt: 'desc'
+      createdAt: "desc",
     },
     include: {
       company: {
         select: {
           id: true,
           name: true,
-          email: true
-        }
+          email: true,
+        },
       },
-      plan: true
-    }
+      plan: true,
+    },
   });
 
   return {
     period: {
       month: currentMonth,
       year: currentYear,
-      monthName: new Date(currentYear, currentMonth - 1).toLocaleString('ar-EG', { month: 'long' })
+      monthName: new Date(currentYear, currentMonth - 1).toLocaleString(
+        "ar-EG",
+        { month: "long" }
+      ),
     },
     monthly: {
       revenue: monthlyRevenue._sum.amount || 0,
-      invoicesCount: monthlyRevenue._count
+      invoicesCount: monthlyRevenue._count,
     },
     yearly: {
       revenue: yearlyRevenue._sum.amount || 0,
-      invoicesCount: yearlyRevenue._count
+      invoicesCount: yearlyRevenue._count,
     },
     subscriptions: {
       active: activeSubscriptions,
       expired: expiredSubscriptions,
-      trial: trialCompanies
+      trial: trialCompanies,
     },
-    recent: recentSubscriptions
+    recent: recentSubscriptions,
   };
 };
 
@@ -233,35 +239,39 @@ export const getMonthlyRevenueReport = async (prisma, year) => {
 
     const monthRevenue = await prisma.subscriptionInvoice.aggregate({
       where: {
-        paymentStatus: 'paid',
+        paymentStatus: "paid",
         paidAt: {
           gte: startDate,
-          lte: endDate
-        }
+          lte: endDate,
+        },
       },
       _sum: {
-        amount: true
+        amount: true,
       },
-      _count: true
+      _count: true,
     });
 
     monthlyData.push({
       month,
-      monthName: new Date(year, month - 1).toLocaleString('ar-EG', { month: 'long' }),
+      monthName: new Date(year, month - 1).toLocaleString("ar-EG", {
+        month: "long",
+      }),
       revenue: monthRevenue._sum.amount || 0,
-      invoicesCount: monthRevenue._count
+      invoicesCount: monthRevenue._count,
     });
   }
 
-  const totalYearRevenue = monthlyData.reduce((sum, m) => sum + parseFloat(m.revenue), 0);
+  const totalYearRevenue = monthlyData.reduce(
+    (sum, m) => sum + parseFloat(m.revenue),
+    0
+  );
 
   return {
     year,
     months: monthlyData,
-    totalRevenue: totalYearRevenue
+    totalRevenue: totalYearRevenue,
   };
 };
-
 
 // ==========================================
 // Create Stripe Checkout Session
@@ -300,16 +310,6 @@ export const createCheckoutSession = async (
     throw new AppError("Invalid or inactive plan", 400);
   }
 
-  // إنشاء فاتورة مؤقتة
-  const invoice = await subRepo.createInvoice(prisma, {
-    companyId,
-    planName: plan.name,
-    amount: plan.price,
-    durationDays: plan.durationDays,
-    paymentMethod: "stripe",
-    paymentStatus: "pending",
-  });
-
   // Create Stripe Checkout Session
   try {
     const session = await stripe.checkout.sessions.create({
@@ -330,22 +330,19 @@ export const createCheckoutSession = async (
       mode: "payment",
       success_url: `${config.frontend.url}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${config.frontend.url}/subscription/cancel`,
-      client_reference_id: invoice.id.toString(),
       metadata: {
         companyId: companyId.toString(),
         planId: planId.toString(),
-        invoiceId: invoice.id.toString(),
       },
     });
 
-    await subRepo.updateInvoicePaymentStatus(prisma, invoice.id, {
-      stripeSessionId: session.id,
-    });
+    // await subRepo.updateInvoicePaymentStatus(prisma, invoice.id, {
+    //   stripeSessionId: session.id,
+    // });
 
     return {
       sessionId: session.id,
       sessionUrl: session.url,
-      invoice,
     };
   } catch (error) {
     console.error("Stripe error:", error);
@@ -360,15 +357,23 @@ export const createCheckoutSession = async (
 export const handleStripeWebhook = async (prisma, event) => {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
+    const companyId = parseInt(session.metadata.companyId);
+    const planId = parseInt(session.metadata.planId);
+    const company = await companyRepo.findCompanyById(prisma, companyId);
+    const plan = await subRepo.findPlanById(prisma, planId);
 
-    const invoice = await subRepo.findInvoiceByStripeSession(
-      prisma,
-      session.id
-    );
+    // الحصول على الاشتراك النشط الحالي
 
-    if (!invoice) {
-      throw new AppError("Invoice not found for this session", 404);
-    }
+    const invoice = await subRepo.createInvoice(prisma, {
+      companyId,
+      planName: plan.name,
+      amount: plan.price,
+      durationDays: plan.durationDays,
+      paymentMethod: "stripe",
+      paymentStatus: "paid",
+      stripePaymentId: session.payment_intent,
+      paidAt: new Date(),
+    });
 
     // تحديث حالة الدفع
     await subRepo.updateInvoicePaymentStatus(prisma, invoice.id, {
@@ -377,18 +382,11 @@ export const handleStripeWebhook = async (prisma, event) => {
       paidAt: new Date(),
     });
 
-    // الحصول على الاشتراك النشط الحالي
+    let startDate = new Date();
     const currentSubscription = await subRepo.findActiveSubscription(
       prisma,
-      invoice.companyId
+      companyId
     );
-
-    const plan = await subRepo.findPlanById(
-      prisma,
-      parseInt(session.metadata.planId)
-    );
-
-    let startDate = new Date();
 
     // إذا كان هناك اشتراك نشط، نبدأ من تاريخ انتهائه
     if (currentSubscription && currentSubscription.endDate > new Date()) {
@@ -412,11 +410,6 @@ export const handleStripeWebhook = async (prisma, event) => {
       subscriptionId: subscription.id,
     });
 
-    // إرسال بريد تأكيد
-    const company = await companyRepo.findCompanyById(
-      prisma,
-      invoice.companyId
-    );
     if (company.email) {
       await sendSubscriptionConfirmationEmail(
         company.email,
