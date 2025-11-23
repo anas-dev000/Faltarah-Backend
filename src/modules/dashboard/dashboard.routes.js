@@ -295,10 +295,10 @@ export default async function dashboardRoutes(fastify, options) {
           where: {
             status: "Pending",
             maintenanceDate: { lt: today },
+            ...(targetCompanyId && { companyId: targetCompanyId }),
           },
           include: {
             customer: {
-              // Fixed: lowercase 'customer'
               select: {
                 fullName: true,
                 primaryNumber: true,
@@ -318,6 +318,7 @@ export default async function dashboardRoutes(fastify, options) {
           orderBy: {
             maintenanceDate: "asc",
           },
+          take: limit,
         });
 
         return reply.send({
