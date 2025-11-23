@@ -68,6 +68,75 @@ export const getCompanyStatus = async (request, reply) => {
   }
 };
 
+/**
+ * Get Subscription Statistics (Developer Only)
+ */
+export const getSubscriptionStats = async (request, reply) => {
+  const currentUser = request.user;
+
+  // Only developer can access
+  if (currentUser.role !== 'developer') {
+    return reply.status(403).send({
+      success: false,
+      error: 'Forbidden: Only developers can view subscription stats'
+    });
+  }
+
+  try {
+    const { month, year } = request.query;
+    
+    const stats = await subService.getSubscriptionStatistics(
+      request.server.prisma,
+      month ? parseInt(month) : null,
+      year ? parseInt(year) : null
+    );
+
+    return reply.send({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    console.error('❌ Stats error:', error);
+    return reply.status(500).send({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get Monthly Revenue Report (Developer Only)
+ */
+export const getMonthlyRevenue = async (request, reply) => {
+  const currentUser = request.user;
+
+  if (currentUser.role !== 'developer') {
+    return reply.status(403).send({
+      success: false,
+      error: 'Forbidden: Only developers can view revenue reports'
+    });
+  }
+
+  try {
+    const { year } = request.query;
+    
+    const report = await subService.getMonthlyRevenueReport(
+      request.server.prisma,
+      year ? parseInt(year) : new Date().getFullYear()
+    );
+
+    return reply.send({
+      success: true,
+      data: report
+    });
+  } catch (error) {
+    console.error('❌ Revenue report error:', error);
+    return reply.status(500).send({
+      success: false,
+      error: error.message
+    });
+  }
+};
 // ==========================================
 // Create Stripe Checkout Session
 // ==========================================

@@ -79,6 +79,24 @@ export default async function subscriptionRoutes(fastify) {
     handler: subController.createCheckoutSession,
   });
 
+
+  // ========================================
+  // NEW: Statistics Routes (Developer Only)
+  // ========================================
+
+  // Get subscription statistics
+  fastify.get('/stats', {
+    preHandler: [authenticate, authorize(['developer'])],
+    handler: subController.getSubscriptionStats
+  });
+
+  // Get monthly revenue report
+  fastify.get('/revenue/monthly', {
+    preHandler: [authenticate, authorize(['developer'])],
+    handler: subController.getMonthlyRevenue
+  });
+
+  
   // Process cash payment (Developer only)
   fastify.post("/cash-payment", {
     preHandler: [
