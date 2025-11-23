@@ -203,7 +203,6 @@ export const updateProduct = async (prisma, id, data, currentUser) => {
     ...(data.name && { name: data.name }),
     ...(data.category && { category: data.category }),
     ...(data.price !== undefined && { price: Number(data.price) }),
-    ...(data.stock !== undefined && { stock: Number(data.stock) }),
     ...(data.supplierId && { supplierId: Number(data.supplierId) }),
   };
 
