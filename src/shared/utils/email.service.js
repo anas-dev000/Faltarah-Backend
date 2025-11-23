@@ -226,6 +226,15 @@ export const sendAdminNotificationEmail = async (signupData) => {
 };
 
 export const sendWelcomeEmail = async (email, fullName, companyName) => {
+  // حساب تاريخ انتهاء التجربة (10 أيام من الآن)
+  const trialEndDate = new Date();
+  trialEndDate.setDate(trialEndDate.getDate() + 10);
+  const formattedTrialEnd = trialEndDate.toLocaleDateString("ar-EG", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
   const mailOptions = {
     from: `"نظام فلترة - Faltarah" <${config.email.user}>`,
     to: email,
@@ -260,6 +269,7 @@ export const sendWelcomeEmail = async (email, fullName, companyName) => {
             <div class="trial-box">
               <h3 style="margin: 0 0 10px 0; color: #92400e;">⭐ فترة تجريبية مجانية</h3>
               <p style="margin: 0; font-size: 18px; font-weight: bold; color: #92400e;">10 أيام وصول كامل لجميع الميزات</p>
+              <p style="margin: 10px 0 0 0; color: #92400e;">تنتهي في: <strong>${formattedTrialEnd}</strong></p>
             </div>
             
             <h3 style="color: #374151; margin-top: 30px;">ماذا يمكنك فعله الآن:</h3>
