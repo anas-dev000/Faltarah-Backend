@@ -1,165 +1,411 @@
 // ==========================================
-// dashboard.service.js
+// dashboard.service.js - ENHANCED VERSION
 // ==========================================
 
 import * as dashboardRepository from "./dashboard.repository.js";
+import { AppError } from "../../shared/errors/AppError.js";
 
 /**
- * Get total customers
+ * ========================================
+ * 1) SALES OVERVIEW DASHBOARD
+ * ========================================
  */
-export const getTotalCustomers = async (prisma, currentUser) => {
+export const getSalesOverview = async (prisma, currentUser, filters = {}) => {
   const { role, companyId } = currentUser;
-  
-  // Developer can see all companies
   const targetCompanyId = role === "developer" ? null : companyId;
-  
-  return await dashboardRepository.getTotalCustomersCount(prisma, targetCompanyId);
+
+  const { startDate, endDate, period = "month" } = filters;
+
+  // Monthly Revenue Trend (Line Chart)
+  const monthlyRevenue = await dashboardRepository.getMonthlyRevenueTrend(
+    prisma,
+    targetCompanyId,
+    startDate,
+    endDate
+  );
+
+  // Sales by Sales Rep (Bar Chart)
+  const salesBySalesRep = await dashboardRepository.getSalesBySalesRep(
+    prisma,
+    targetCompanyId,
+    startDate,
+    endDate
+  );
+
+  // Sales Type Distribution (Pie Chart)
+  const salesTypeDistribution =
+    await dashboardRepository.getSalesTypeDistribution(
+      prisma,
+      targetCompanyId,
+      startDate,
+      endDate
+    );
+
+  // KPI Cards
+  const kpis = await dashboardRepository.getSalesKPIs(
+    prisma,
+    targetCompanyId,
+    startDate,
+    endDate
+  );
+
+  return {
+    monthlyRevenue,
+    salesBySalesRep,
+    salesTypeDistribution,
+    kpis,
+  };
 };
 
 /**
- * Get pending installments
+ * ========================================
+ * 2) PRODUCTS PERFORMANCE DASHBOARD
+ * ========================================
  */
-export const getPendingInstallments = async (prisma, currentUser) => {
+export const getProductsPerformance = async (
+  prisma,
+  currentUser,
+  filters = {}
+) => {
   const { role, companyId } = currentUser;
-  
   const targetCompanyId = role === "developer" ? null : companyId;
-  
-  return await dashboardRepository.getPendingInstallmentsCount(prisma, targetCompanyId);
+
+  const { startDate, endDate, category } = filters;
+
+  // Top Selling Products (Bar Chart)
+  const topProducts = await dashboardRepository.getTopSellingProducts(
+    prisma,
+    targetCompanyId,
+    startDate,
+    endDate,
+    10
+  );
+
+  // Sales by Category (Donut Chart)
+  const categoryDistribution = await dashboardRepository.getSalesByCategory(
+    prisma,
+    targetCompanyId,
+    startDate,
+    endDate
+  );
+
+  // Low Stock Alerts
+  const lowStockProducts = await dashboardRepository.getLowStockAlerts(
+    prisma,
+    targetCompanyId,
+    10
+  );
+
+  // Category Performance Heatmap
+  const categoryHeatmap =
+    await dashboardRepository.getCategoryMonthlyPerformance(
+      prisma,
+      targetCompanyId,
+      startDate,
+      endDate
+    );
+
+  return {
+    topProducts,
+    categoryDistribution,
+    lowStockProducts,
+    categoryHeatmap,
+  };
 };
 
 /**
- * Get upcoming maintenances
+ * ========================================
+ * 3) CUSTOMERS INSIGHTS DASHBOARD
+ * ========================================
  */
-export const getUpcomingMaintenances = async (prisma, currentUser) => {
+export const getCustomersInsights = async (
+  prisma,
+  currentUser,
+  filters = {}
+) => {
   const { role, companyId } = currentUser;
-  
   const targetCompanyId = role === "developer" ? null : companyId;
-  
-  return await dashboardRepository.getUpcomingMaintenancesCount(prisma, targetCompanyId);
-};
 
-/**
- * Get low stock products
- */
-export const getLowStockProducts = async (prisma, currentUser) => {
-  const { role, companyId } = currentUser;
-  
-  const targetCompanyId = role === "developer" ? null : companyId;
-  
-  return await dashboardRepository.getLowStockProductsCount(prisma, targetCompanyId);
-};
-
-export const getLowStockAccessories = async (prisma, currentUser) => {
-  const { role, companyId } = currentUser;
-  
-  const targetCompanyId = role === "developer" ? null : companyId;  
-  
-  return await dashboardRepository.getLowStockAccessoriesCount(prisma, targetCompanyId);
-};
-/**
- * Get monthly revenue
- */
-export const getMonthlyRevenue = async (prisma, currentUser) => {
-  const { role, companyId } = currentUser;
-  
-  const targetCompanyId = role === "developer" ? null : companyId;
-  
-  const revenue = await dashboardRepository.getMonthlyRevenue(prisma, targetCompanyId);
-  
-  return Number(revenue);
-};
-
-/**
- * Get overdue payments
- */
-export const getOverduePayments = async (prisma, currentUser) => {
-  const { role, companyId } = currentUser;
-  
-  const targetCompanyId = role === "developer" ? null : companyId;
-  
-  return await dashboardRepository.getOverduePaymentsCount(prisma, targetCompanyId);
-};
-
-/**
- * Get recent invoices
- */
-export const getRecentInvoices = async (prisma, currentUser) => {
-  const { role, companyId } = currentUser;
-  
-  const targetCompanyId = role === "developer" ? null : companyId;
-  
-  const invoices = await dashboardRepository.getRecentInvoices(prisma, targetCompanyId);
-  
-  return invoices.map((invoice) => ({
-    id: invoice.id,
-    customerName: invoice.customer.fullName,
-    customerPhone: invoice.customer.primaryNumber,
-    salesRep: invoice.salesRep.fullName,
-    totalAmount: Number(invoice.totalAmount),
-    discountAmount: Number(invoice.discountAmount),
-    saleType: invoice.saleType,
-    contractDate: invoice.contractDate,
-    installationDate: invoice.installationDate,
-    createdAt: invoice.createdAt,
-    customerId: invoice.customerId,
-  }));
-};
-
-/**
- * Get upcoming maintenances list
- */
-export const getUpcomingMaintenancesList = async (prisma, currentUser) => {
-  const { role, companyId } = currentUser;
-  
-  const targetCompanyId = role === "developer" ? null : companyId;
-  
-  const maintenances = await dashboardRepository.getUpcomingMaintenancesList(
+  // Customer Distribution by City
+  const customersByCity = await dashboardRepository.getCustomersByCity(
     prisma,
     targetCompanyId
   );
-  
-  return maintenances.map((maintenance) => ({
-    id: maintenance.id,
-    customerName: maintenance.customer.fullName,
-    customerPhone: maintenance.customer.primaryNumber,
-    serviceName: maintenance.service.name,
-    productName: maintenance.product.name,
-    technicianName: maintenance.technician.fullName,
-    maintenanceDate: maintenance.maintenanceDate,
-    price: Number(maintenance.price),
-    status: maintenance.status,
-    notes: maintenance.notes,
-    customerId: maintenance.customerId,
-productId: maintenance.product.id,
-  }));
+
+  // Customer Type Distribution
+  const customerTypeDistribution =
+    await dashboardRepository.getCustomerTypeDistribution(
+      prisma,
+      targetCompanyId
+    );
+
+  // Top Spending Customers
+  const topCustomers = await dashboardRepository.getTopSpendingCustomers(
+    prisma,
+    targetCompanyId,
+    10
+  );
+
+  // Customer Growth Trend
+  const customerGrowth = await dashboardRepository.getCustomerGrowthTrend(
+    prisma,
+    targetCompanyId,
+    12
+  );
+
+  return {
+    customersByCity,
+    customerTypeDistribution,
+    topCustomers,
+    customerGrowth,
+  };
 };
 
 /**
- * Get all dashboard stats in one call
+ * ========================================
+ * 4) MAINTENANCE TRACKING DASHBOARD
+ * ========================================
  */
-export const getDashboardStats = async (prisma, currentUser) => {
-  const [
-    totalCustomers,
-    pendingInstallments,
-    upcomingMaintenances,
-    lowStockProducts,
-    monthlyRevenue,
-    overduePayments,
-  ] = await Promise.all([
-    getTotalCustomers(prisma, currentUser),
-    getPendingInstallments(prisma, currentUser),
-    getUpcomingMaintenances(prisma, currentUser),
-    getLowStockProducts(prisma, currentUser),
-    getMonthlyRevenue(prisma, currentUser),
-    getOverduePayments(prisma, currentUser),
-  ]);
+export const getMaintenanceTracking = async (
+  prisma,
+  currentUser,
+  filters = {}
+) => {
+  const { role, companyId } = currentUser;
+  const targetCompanyId = role === "developer" ? null : companyId;
+
+  const { startDate, endDate } = filters;
+
+  // Maintenance Status Distribution
+  const statusDistribution =
+    await dashboardRepository.getMaintenanceStatusDistribution(
+      prisma,
+      targetCompanyId,
+      startDate,
+      endDate
+    );
+
+  // Upcoming Maintenances (Timeline)
+  const upcomingMaintenances =
+    await dashboardRepository.getUpcomingMaintenances(
+      prisma,
+      targetCompanyId,
+      30
+    );
+
+  // Maintenance by Technician
+  const technicianPerformance =
+    await dashboardRepository.getMaintenanceByTechnician(
+      prisma,
+      targetCompanyId,
+      startDate,
+      endDate
+    );
+
+  // Overdue Maintenances Alert
+  const overdueMaintenances = await dashboardRepository.getOverdueMaintenances(
+    prisma,
+    targetCompanyId
+  );
 
   return {
-    totalCustomers,
-    pendingInstallments,
+    statusDistribution,
     upcomingMaintenances,
-    lowStockProducts,
-    monthlyRevenue,
-    overduePayments,
+    technicianPerformance,
+    overdueMaintenances,
   };
+};
+
+/**
+ * ========================================
+ * 5) INSTALLMENTS DASHBOARD
+ * ========================================
+ */
+export const getInstallmentsDashboard = async (
+  prisma,
+  currentUser,
+  filters = {}
+) => {
+  const { role, companyId } = currentUser;
+  const targetCompanyId = role === "developer" ? null : companyId;
+
+  const { startDate, endDate } = filters;
+
+  // Monthly Collection Trend (Line Chart)
+  const monthlyCollection = await dashboardRepository.getMonthlyCollectionTrend(
+    prisma,
+    targetCompanyId,
+    startDate,
+    endDate
+  );
+
+  // Payment Status Distribution (Stacked Bar)
+  const paymentStatusDistribution =
+    await dashboardRepository.getPaymentStatusDistribution(
+      prisma,
+      targetCompanyId,
+      startDate,
+      endDate
+    );
+
+  // Collection Rate (Gauge Chart)
+  const collectionRate = await dashboardRepository.getCollectionRate(
+    prisma,
+    targetCompanyId,
+    startDate,
+    endDate
+  );
+
+  // Top Delayed Customers (Table)
+  const delayedCustomers = await dashboardRepository.getTopDelayedCustomers(
+    prisma,
+    targetCompanyId,
+    10
+  );
+
+  return {
+    monthlyCollection,
+    paymentStatusDistribution,
+    collectionRate,
+    delayedCustomers,
+  };
+};
+
+/**
+ * ========================================
+ * 6) EMPLOYEES PERFORMANCE DASHBOARD
+ * ========================================
+ */
+export const getEmployeesPerformance = async (
+  prisma,
+  currentUser,
+  filters = {}
+) => {
+  const { role, companyId } = currentUser;
+  const targetCompanyId = role === "developer" ? null : companyId;
+
+  const { startDate, endDate } = filters;
+
+  // Top Sales Reps Leaderboard
+  const salesLeaderboard = await dashboardRepository.getSalesLeaderboard(
+    prisma,
+    targetCompanyId,
+    startDate,
+    endDate
+  );
+
+  // Technician Efficiency
+  const technicianEfficiency =
+    await dashboardRepository.getTechnicianEfficiency(
+      prisma,
+      targetCompanyId,
+      startDate,
+      endDate
+    );
+
+  // Installations by Technician
+  const installationsByTechnician =
+    await dashboardRepository.getInstallationsByTechnician(
+      prisma,
+      targetCompanyId,
+      startDate,
+      endDate
+    );
+
+  return {
+    salesLeaderboard,
+    technicianEfficiency,
+    installationsByTechnician,
+  };
+};
+
+/**
+ * ========================================
+ * 7) EXECUTIVE SUMMARY (للمدير)
+ * ========================================
+ */
+export const getExecutiveSummary = async (prisma, currentUser) => {
+  const { role, companyId } = currentUser;
+  const targetCompanyId = role === "developer" ? null : companyId;
+
+  const today = new Date();
+  const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+
+  // Current Month vs Last Month Comparison
+  const [currentStats, lastMonthStats] = await Promise.all([
+    dashboardRepository.getMonthStats(prisma, targetCompanyId, currentMonth),
+    dashboardRepository.getMonthStats(prisma, targetCompanyId, lastMonth),
+  ]);
+
+  const comparison = {
+    revenue: {
+      current: currentStats.revenue,
+      previous: lastMonthStats.revenue,
+      change: calculatePercentageChange(
+        currentStats.revenue,
+        lastMonthStats.revenue
+      ),
+    },
+    invoices: {
+      current: currentStats.invoiceCount,
+      previous: lastMonthStats.invoiceCount,
+      change: calculatePercentageChange(
+        currentStats.invoiceCount,
+        lastMonthStats.invoiceCount
+      ),
+    },
+    customers: {
+      current: currentStats.customerCount,
+      previous: lastMonthStats.customerCount,
+      change: calculatePercentageChange(
+        currentStats.customerCount,
+        lastMonthStats.customerCount
+      ),
+    },
+    maintenances: {
+      current: currentStats.maintenanceCount,
+      previous: lastMonthStats.maintenanceCount,
+      change: calculatePercentageChange(
+        currentStats.maintenanceCount,
+        lastMonthStats.maintenanceCount
+      ),
+    },
+  };
+
+  // Critical Alerts
+  const alerts = await dashboardRepository.getCriticalAlerts(
+    prisma,
+    targetCompanyId
+  );
+
+  // Top Performers
+  const topPerformers = await dashboardRepository.getTopPerformers(
+    prisma,
+    targetCompanyId
+  );
+
+  return {
+    comparison,
+    alerts,
+    topPerformers,
+  };
+};
+
+/**
+ * Helper: Calculate percentage change
+ */
+function calculatePercentageChange(current, previous) {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return Number((((current - previous) / previous) * 100).toFixed(2));
+}
+
+export default {
+  getSalesOverview,
+  getProductsPerformance,
+  getCustomersInsights,
+  getMaintenanceTracking,
+  getInstallmentsDashboard,
+  getEmployeesPerformance,
+  getExecutiveSummary,
 };
