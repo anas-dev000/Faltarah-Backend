@@ -27,7 +27,7 @@ export default async function dashboardRoutes(fastify, options) {
           type: "object",
           properties: {
             success: { type: "boolean" },
-            data: { type: "object" },
+            data: { type: "object", additionalProperties: true },
           },
         },
       },
@@ -115,6 +115,16 @@ export default async function dashboardRoutes(fastify, options) {
             },
           }),
         ]);
+
+        console.log("Dashboard stats debug:", {
+          totalCustomers,
+          pendingInstallments,
+          upcomingMaintenances,
+          lowStockItems,
+          lowStockAccessories,
+          monthlyRevenue,
+          overduePayments,
+        });
 
         return reply.send({
           success: true,
