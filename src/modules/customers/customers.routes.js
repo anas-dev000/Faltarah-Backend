@@ -35,7 +35,7 @@ export default async function customerRoutes(fastify) {
 
   // Get all customers (Manager, Developer only)
   fastify.get("/", {
-    preHandler: [authenticate, authorize(["manager", "developer"])],
+    preHandler: [authenticate, authorize(["manager", "developer","employee"])],
     handler: customerController.getAll,
   });
 
@@ -73,7 +73,7 @@ export default async function customerRoutes(fastify) {
 
   // Get customer count (Manager, Developer only)
   fastify.get("/count", {
-    preHandler: [authenticate, authorize(["manager", "developer"])],
+    preHandler: [authenticate, authorize(["manager", "developer","employee"])],
     handler: customerController.getCount,
   });
 
@@ -81,7 +81,7 @@ export default async function customerRoutes(fastify) {
   fastify.post("/", {
     preHandler: [
       authenticate,
-      authorize(["manager", "developer"]),
+      authorize(["manager", "developer","employee"]),
       
     ],
     handler: customerController.create,
@@ -91,7 +91,7 @@ export default async function customerRoutes(fastify) {
   fastify.put("/:id", {
     preHandler: [
       authenticate,
-      authorize(["manager", "developer"]),
+      authorize(["manager", "developer","employee"]),
       // validateBody(updateCustomerSchema),
     ],
     handler: customerController.update,
@@ -99,7 +99,7 @@ export default async function customerRoutes(fastify) {
 
   // Delete customer (Developer only)
   fastify.delete("/:id", {
-    preHandler: [authenticate, authorize(["developer","manager"])],
+    preHandler: [authenticate, authorize(["developer","manager","employee"])],
     handler: customerController.deleteById,
   });
 }
