@@ -9,7 +9,13 @@ import { ERROR_CODES } from "../../shared/errors/errorCodes.js";
 /**
  * Get all invoices based on user role
  */
-export async function getAllInvoices(prisma, currentUser, filters = {}, page = 1, limit = 10) {
+export async function getAllInvoices(
+  prisma,
+  currentUser,
+  filters = {},
+  page = 1,
+  limit = 10
+) {
   const { role, companyId } = currentUser;
 
   let targetCompanyId = null;
@@ -27,7 +33,13 @@ export async function getAllInvoices(prisma, currentUser, filters = {}, page = 1
   const skip = (page - 1) * limit;
   const take = limit;
 
-  return await invoicesRepository.findAll(prisma, targetCompanyId, filters, skip, take);
+  return await invoicesRepository.findAll(
+    prisma,
+    targetCompanyId,
+    filters,
+    skip,
+    take
+  );
 }
 
 /**
@@ -94,7 +106,7 @@ export async function getMonthlyRevenue(prisma, currentUser) {
 }
 
 /**
- * Create new invoice
+ *  Create new invoice with correct calculations
  */
 export async function createInvoice(prisma, data, currentUser) {
   const { role, companyId } = currentUser;
@@ -173,53 +185,105 @@ export async function createInvoice(prisma, data, currentUser) {
     }
   }
 
-  // التحقق من المبالغ المدفوعة
-  const totalAmount = parseFloat(data.totalAmount);
+  // ==========================================
+  //  CORRECT CALCULATION LOGIC
+  // ==========================================
+
+  // 1️⃣ الإجمالي الفرعي (من المنتجات فقط)
+  const subtotal = parseFloat(data.totalAmount);
+
+  // 2️⃣ قيمة الخصم
   const discountAmount = parseFloat(data.discountAmount || 0);
-  const netAmount = totalAmount - discountAmount;
-  
+
+  // 3️⃣ حساب تكلفة التركيب بناءً على النوع
+  const installationCostValue = parseFloat(data.installationCostValue || 0);
+  let actualInstallationCost = 0;
+
+  if (data.installationCostType === "Percentage") {
+    // إذا كانت نسبة مئوية، نحسبها من الإجمالي الفرعي
+    actualInstallationCost = (subtotal * installationCostValue) / 100;
+  } else {
+    // إذا كانت مبلغ ثابت
+    actualInstallationCost = installationCostValue;
+  }
+
+  // 4️⃣ الإجمالي النهائي = الإجمالي الفرعي - الخصم + تكلفة التركيب
+  const finalTotal = subtotal - discountAmount + actualInstallationCost;
+
+  // 5️⃣ المدفوعات
   const paidAtContract = parseFloat(data.paidAtContract || 0);
   const paidAtInstallation = parseFloat(data.paidAtInstallation || 0);
   const totalPaid = paidAtContract + paidAtInstallation;
 
-  // التحقق من أن المبالغ المدفوعة لا تتجاوز صافي المبلغ
-  if (totalPaid > netAmount) {
+  //  التحقق من أن المبالغ المدفوعة لا تتجاوز الإجمالي النهائي
+  if (totalPaid > finalTotal) {
     throw new AppError(
-      `Total paid amount (${totalPaid}) cannot exceed net invoice amount (${netAmount})`,
+      `Total paid (${totalPaid.toFixed(
+        2
+      )}) exceeds final total (${finalTotal.toFixed(
+        2
+      )}). Subtotal: ${subtotal}, Discount: ${discountAmount}, Installation: ${actualInstallationCost}`,
       400,
       ERROR_CODES.VALIDATION_ERROR
     );
   }
 
-  // التحقق الخاص بالبيع النقدي
+  //  التحقق الخاص بالبيع النقدي
   if (data.saleType === "Cash") {
-    // في حالة البيع النقدي، يجب أن يكون المبلغ المدفوع مساوياً لصافي المبلغ
-    if (totalPaid !== netAmount) {
+    if (Math.abs(totalPaid - finalTotal) > 0.01) {
+      // للسماح بفروق التقريب
       throw new AppError(
-        `For cash sales, total paid amount (${totalPaid}) must equal net invoice amount (${netAmount})`,
-        400,
-        ERROR_CODES.VALIDATION_ERROR
-      );
-    }
-  } else if (data.saleType === "Installment") {
-    // في حالة البيع بالتقسيط، يجب أن يكون المبلغ المدفوع أقل من أو يساوي صافي المبلغ
-    if (totalPaid > netAmount) {
-      throw new AppError(
-        `For installment sales, total paid amount (${totalPaid}) cannot exceed net invoice amount (${netAmount})`,
+        `For cash sales, total paid (${totalPaid.toFixed(
+          2
+        )}) must equal final total (${finalTotal.toFixed(2)})`,
         400,
         ERROR_CODES.VALIDATION_ERROR
       );
     }
   }
 
+  // ==========================================
+  //  CREATE INVOICE WITH CORRECT VALUES
+  // ==========================================
   const invoiceData = {
-    ...data,
+    customerId: data.customerId,
+    salesRepId: data.salesRepId,
+    technicianId: data.technicianId,
     companyId: targetCompanyId,
+
+    //  نحفظ الإجمالي النهائي (بعد الخصم والتركيب)
+    totalAmount: finalTotal,
+
+    //  نحفظ قيمة الخصم بشكل منفصل
+    discountAmount: discountAmount,
+
+    saleType: data.saleType,
+    maintenancePeriod: data.maintenancePeriod,
+    paidAtContract: paidAtContract,
+    paidAtInstallation: paidAtInstallation,
+
+    //  نحفظ نوع وقيمة التركيب بشكل منفصل للشفافية
+    installationCostType: data.installationCostType,
+    installationCostValue: data.installationCostValue,
+
     contractDate: new Date(data.contractDate),
     installationDate: data.installationDate
       ? new Date(data.installationDate)
       : null,
+    contractNotes: data.contractNotes || "",
   };
+
+  console.log("📊 Invoice Calculation Debug:", {
+    subtotal,
+    discountAmount,
+    installationCostType: data.installationCostType,
+    installationCostValue,
+    actualInstallationCost,
+    finalTotal,
+    paidAtContract,
+    paidAtInstallation,
+    totalPaid,
+  });
 
   return await invoicesRepository.create(prisma, invoiceData);
 }
@@ -258,7 +322,7 @@ export async function updateInvoice(prisma, id, data, currentUser) {
 }
 
 /**
- * ✅ Delete invoice with cascading deletion
+ *  Delete invoice with cascading deletion
  */
 export async function deleteInvoice(prisma, id, currentUser) {
   const { role, companyId } = currentUser;
@@ -287,7 +351,7 @@ export async function deleteInvoice(prisma, id, currentUser) {
     );
   }
 
-  // ✅ Delete invoice with all relations
+  //  Delete invoice with all relations
   return await invoicesRepository.deleteByIdWithRelations(prisma, id);
 }
 

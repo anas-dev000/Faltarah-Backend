@@ -51,10 +51,10 @@ export class InvoicePDFGenerator {
 
   prepareTemplateData() {
     const invoice = this.invoiceData;
-    
+
     // حساب الصافي
-    const netAmount = parseFloat(invoice.totalAmount) - parseFloat(invoice.discountAmount || 0);
-    
+    const netAmount = parseFloat(invoice.totalAmount);
+    // - parseFloat(invoice.discountAmount || 0)
     // حساب المتبقي
     const paidAtContract = parseFloat(invoice.paidAtContract || 0);
     const paidAtInstallation = parseFloat(invoice.paidAtInstallation || 0);
@@ -66,19 +66,23 @@ export class InvoicePDFGenerator {
     if (invoice.installment) {
       const installment = invoice.installment;
       const payments = installment.installmentPayments || [];
-      
+
       // حساب إجمالي المدفوع والمتبقي
       const totalPaidInstallments = payments.reduce((sum, payment) => {
         return sum + parseFloat(payment.amountPaid || 0);
       }, 0);
-      
+
       const remainingInstallments = payments.reduce((sum, payment) => {
-        return sum + (parseFloat(payment.amountDue || 0) - parseFloat(payment.amountPaid || 0));
+        return (
+          sum +
+          (parseFloat(payment.amountDue || 0) -
+            parseFloat(payment.amountPaid || 0))
+        );
       }, 0);
 
       // معالجة جدول الأقساط
       const processedPayments = payments.map((payment, index) => {
-        const isPaid = payment.status === 'Paid';
+        const isPaid = payment.status === "Paid";
         const dueDate = new Date(payment.dueDate);
         const today = new Date();
         const isOverdue = !isPaid && dueDate < today;
@@ -91,30 +95,43 @@ export class InvoicePDFGenerator {
           status: payment.status,
           isPaid: isPaid,
           isOverdue: isOverdue,
-          paymentDate: payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString("ar-EG") : '-',
-          notes: payment.notes || ''
+          paymentDate: payment.paymentDate
+            ? new Date(payment.paymentDate).toLocaleDateString("ar-EG")
+            : "-",
+          notes: payment.notes || "",
         };
       });
 
       installmentData = {
         hasInstallment: true,
         numberOfMonths: installment.numberOfMonths,
-        monthlyInstallment: parseFloat(installment.monthlyInstallment).toFixed(2),
-        collectionStartDate: new Date(installment.collectionStartDate).toLocaleDateString("ar-EG"),
-        collectionEndDate: new Date(installment.collectionEndDate).toLocaleDateString("ar-EG"),
+        monthlyInstallment: parseFloat(installment.monthlyInstallment).toFixed(
+          2
+        ),
+        collectionStartDate: new Date(
+          installment.collectionStartDate
+        ).toLocaleDateString("ar-EG"),
+        collectionEndDate: new Date(
+          installment.collectionEndDate
+        ).toLocaleDateString("ar-EG"),
         totalPaidInstallments: totalPaidInstallments.toFixed(2),
         remainingInstallments: remainingInstallments.toFixed(2),
-        installmentPayments: processedPayments
+        installmentPayments: processedPayments,
       };
     } else {
       installmentData = { hasInstallment: false };
     }
 
     // تجهيز بيانات المنتجات
-    const invoiceItems = invoice.invoiceItems.map(item => {
-      const name = item.product?.name || item.accessory?.name || item.service?.name || "غير محدد";
-      const category = item.product?.category || item.service?.description || "";
-      
+    const invoiceItems = invoice.invoiceItems.map((item) => {
+      const name =
+        item.product?.name ||
+        item.accessory?.name ||
+        item.service?.name ||
+        "غير محدد";
+      const category =
+        item.product?.category || item.service?.description || "";
+
       return {
         name: name,
         category: category,
@@ -129,53 +146,63 @@ export class InvoicePDFGenerator {
       // معلومات الفاتورة
       invoiceId: invoice.id,
       contractDate: new Date(invoice.contractDate).toLocaleDateString("ar-EG"),
-      installationDate: invoice.installationDate 
-        ? new Date(invoice.installationDate).toLocaleDateString("ar-EG") 
+      installationDate: invoice.installationDate
+        ? new Date(invoice.installationDate).toLocaleDateString("ar-EG")
         : null,
-      saleType: invoice.saleType === 'Installment' ? 'تقسيط' : 'كاش',
-      
+      saleType: invoice.saleType === "Installment" ? "تقسيط" : "كاش",
+
       // معلومات العميل
       customerName: invoice.customer.fullName,
       customerNationalId: invoice.customer.nationalId,
-      customerType: invoice.customer.customerType === 'Maintenance' ? 'صيانة' : 'عادي',
+      customerType:
+        invoice.customer.customerType === "Maintenance" ? "صيانة" : "عادي",
       customerGovernorate: invoice.customer.governorate,
       customerCity: invoice.customer.city,
       customerDistrict: invoice.customer.district,
       customerPhone: invoice.customer.primaryNumber,
       customerSecondaryPhone: invoice.customer.secondaryNumber,
-      
+
       // معلومات الموظفين
       salesRepName: invoice.salesRep.fullName,
       salesRepPhone: invoice.salesRep.primaryNumber,
       technicianName: invoice.technician?.fullName,
       technicianPhone: invoice.technician?.primaryNumber,
       maintenancePeriod: invoice.maintenancePeriod,
-      
+
       // المنتجات والخدمات
       invoiceItems: invoiceItems,
-      
+
       // الملخص المالي
       totalAmount: parseFloat(invoice.totalAmount).toFixed(2),
-      discountAmount: invoice.discountAmount ? parseFloat(invoice.discountAmount).toFixed(2) : null,
+      discountAmount: invoice.discountAmount
+        ? parseFloat(invoice.discountAmount).toFixed(2)
+        : null,
       netAmount: netAmount.toFixed(2),
-      paidAtContract: invoice.paidAtContract ? parseFloat(invoice.paidAtContract).toFixed(2) : null,
-      paidAtInstallation: invoice.paidAtInstallation ? parseFloat(invoice.paidAtInstallation).toFixed(2) : null,
-      installationCost: invoice.installationCostValue ? parseFloat(invoice.installationCostValue).toFixed(2) : null,
-      installationCostType: invoice.installationCostType === 'Fixed' ? 'ثابت' : 'نسبة مئوية',
+      paidAtContract: invoice.paidAtContract
+        ? parseFloat(invoice.paidAtContract).toFixed(2)
+        : null,
+      paidAtInstallation: invoice.paidAtInstallation
+        ? parseFloat(invoice.paidAtInstallation).toFixed(2)
+        : null,
+      installationCost: invoice.installationCostValue
+        ? parseFloat(invoice.installationCostValue).toFixed(2)
+        : null,
+      installationCostType:
+        invoice.installationCostType === "Fixed" ? "ثابت" : "نسبة مئوية",
       remainingAmount: remainingAmount > 0 ? remainingAmount.toFixed(2) : null,
-      
+
       // الملاحظات
       contractNotes: invoice.contractNotes,
-      
+
       // معلومات الشركة
       companyName: invoice.company.name,
       companyAddress: invoice.company.address,
       companyPhone: invoice.company.phone,
       companyEmail: invoice.company.email,
       companyLogo: invoice.company.logo,
-      
+
       // بيانات التقسيط
-      ...installmentData
+      ...installmentData,
     };
   }
 
