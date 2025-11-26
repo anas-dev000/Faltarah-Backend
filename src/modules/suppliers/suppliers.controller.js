@@ -1,10 +1,6 @@
 import * as suppliersService from "./suppliers.service.js";
 import { validateSchema } from "../../shared/utils/validateSchema.js";
-import {
-  createSupplierSchema,
-  updateSupplierSchema,
-  supplierIdSchema,
-} from "./suppliers.schema.js";
+import { updateSupplierSchema, supplierIdSchema } from "./suppliers.schema.js";
 
 /**
  * Get all suppliers with optional filters
@@ -112,16 +108,6 @@ export async function getSupplierById(request, reply) {
  */
 export async function createSupplier(request, reply) {
   try {
-    const validation = validateSchema(createSupplierSchema, request.body);
-
-    if (!validation.valid) {
-      return reply.status(400).send({
-        success: false,
-        error: "Validation failed",
-        details: validation.errors,
-      });
-    }
-
     const currentUser = request.user;
 
     const supplier = await suppliersService.createSupplier(
