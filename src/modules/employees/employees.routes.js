@@ -27,7 +27,7 @@ const validateBody = (schema) => {
 export default async function employeeRoutes(fastify) {
   // Get all employees (Manager, Developer only)
   fastify.get("/", {
-    preHandler: [authenticate, authorize(["manager", "developer"])],
+    preHandler: [authenticate, authorize(["manager", "developer","employee"])],
     handler: employeeController.getAll,
   });
   // Get all status of employees 
