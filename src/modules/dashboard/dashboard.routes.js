@@ -277,18 +277,28 @@ export default async function dashboardRoutes(fastify, options) {
 
   /**
    * @route GET /api/dashboard/maintenances/overdue-list
-   * @desc Get overdue maintenances list
-   * @access Private (All authenticated users)
+   * @desc Get overdue maintenances list (Pending + past date OR status = Overdue)
+   * @access Private
    */
   fastify.get("/maintenances/overdue-list", {
     preHandler: [authenticate, checkCompanyAccess()],
     schema: {
-      description: "Get overdue maintenances list",
+      description: "Get list of overdue maintenances",
       tags: ["Dashboard"],
       querystring: {
         type: "object",
         properties: {
           limit: { type: "number", default: 10, maximum: 50 },
+        },
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            data: { type: "array" },
+            count: { type: "integer" },
+          },
         },
       },
     },
@@ -297,49 +307,89 @@ export default async function dashboardRoutes(fastify, options) {
         const currentUser = request.user;
         const { role, companyId } = currentUser;
         const targetCompanyId = role === "developer" ? null : companyId;
-        const limit = request.query.limit || 10;
+        const limit = Math.min(request.query.limit || 10, 50);
 
         const today = new Date();
+        today.setHours(0, 0, 0, 0); // لضمان المقارنة الصحيحة بالتاريخ فقط
 
         const maintenances = await request.server.prisma.maintenance.findMany({
           where: {
-            status: "Pending",
-            maintenanceDate: { lt: today },
-            ...(targetCompanyId && { companyId: targetCompanyId }),
+            AND: [
+              // الشرط الأساسي: إما متأخرة فعليًا أو حالتها Overdue
+              {
+                OR: [
+                  // 1. حالتها Pending وموعدها فات
+                  {
+                    status: "Pending",
+                    maintenanceDate: { lt: today },
+                  },
+                  // 2. أو حالتها أصلًا Overdue (بغض النظر عن التاريخ)
+                  {
+                    status: "Overdue",
+                  },
+                ],
+              },
+              // فلتر الشركة لو مش developer
+              ...(targetCompanyId ? [{ companyId: targetCompanyId }] : []),
+            ],
           },
           include: {
             customer: {
               select: {
+                id: true,
                 fullName: true,
                 primaryNumber: true,
-              },
-            },
-            product: {
-              select: {
-                name: true,
+                governorate: true,
+                city: true,
+                district: true,
               },
             },
             service: {
               select: {
+                id: true,
+                name: true,
+                description: true,
+                price: true,
+              },
+            },
+            product: {
+              select: {
+                id: true,
+                name: true,
+                category: true,
+              },
+            },
+            technician: {
+              select: {
+                id: true,
+                fullName: true,
+                primaryNumber: true,
+              },
+            },
+            company: {
+              select: {
+                id: true,
                 name: true,
               },
             },
           },
-          orderBy: {
-            maintenanceDate: "asc",
-          },
+          orderBy: [
+            { status: "desc" }, // الأولوية للـ Overdue الأول
+            { maintenanceDate: "asc" }, // ثم الأقدم
+          ],
           take: limit,
         });
 
         return reply.send({
           success: true,
           data: maintenances,
+          count: maintenances.length,
         });
       } catch (error) {
-        request.log.error(error);
+        request.log.error("Error fetching overdue maintenances:", error);
         return reply.status(500).send({
           success: false,
-          error: error.message,
+          error: "فشل جلب الصيانات المتأخرة",
         });
       }
     },
