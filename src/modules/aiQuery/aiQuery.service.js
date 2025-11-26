@@ -77,7 +77,7 @@ export const processSmartQuery = async (prisma, queryText, currentUser) => {
     console.log(`✅ Found ${results.length} results from database`);
 
     // 7. توليد الإجابة بـ AI مع RAG Context
-    const aiAnswer = await generateRAGResponse(queryText, ragContext, results);
+    let aiAnswer = await generateRAGResponse(queryText, ragContext, results);
 
     // ✅ FIXED: Improved fallback logic for empty results
     if (results.length === 0) {
@@ -362,9 +362,10 @@ function buildEmployeeQuery(text, analysis) {
   const filters = {};
   const lower = text.toLowerCase();
 
-  if (lower.includes("تكنيشن") || lower.includes("فني"))
+  if (lower.includes("تقنيين") || lower.includes("فني"))
     filters.role = "Technician";
-  if (lower.includes("منديب")) filters.role = "SalesRep";
+  if (lower.includes("منديب") || lower.includes("مندوبين"))
+    filters.role = "SalesRep";
 
   return filters;
 }
@@ -475,12 +476,12 @@ export const getUserQueryHistory = async (prisma, currentUser, limit = 10) => {
 
 export const getQuerySuggestions = async () => {
   return [
-    "هات العملاء في القاهرة",
+    "اريد كل العملاء الذين في القاهرة",
     "المنتجات أقل من 3000 جنيه",
-    "الموظفين التكنيشن",
+    "الموظفين الفنيين",
     "الأقساط المتأخرة",
-    "الفواتير بتاع سنة 2024",
-    "الصيانات المعلقة",
+    "الفواتير الخاصه بسنة 2025",
+    "الصيانات المعلقة كلها",
     "المنتجات التي المخزون فيها منخفض",
     "جميع الموردين",
   ];
