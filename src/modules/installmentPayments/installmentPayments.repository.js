@@ -192,7 +192,7 @@ export async function updatePayment(prisma, id, data) {
 }
 
 /**
- *  Delete installment payment (simple - no cascading needed)
+ * ✅ Delete installment payment (simple - no cascading needed)
  */
 export async function deletePayment(prisma, id) {
   return await prisma.installmentPayment.delete({

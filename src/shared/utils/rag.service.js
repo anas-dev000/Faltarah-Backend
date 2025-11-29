@@ -15,7 +15,7 @@ if (GEMINI_API_KEY) {
 /**
  * ========================================
  * CREATE EMBEDDINGS
- *  FIXED: استخدام النموذج الصحيح
+ * ✅ FIXED: استخدام النموذج الصحيح
  * ========================================
  */
 export async function createEmbedding(text) {
@@ -25,9 +25,9 @@ export async function createEmbedding(text) {
       return generateSimpleEmbedding(text);
     }
 
-    //  FIXED: استخدام النموذج الصحيح
+    // ✅ FIXED: استخدام النموذج الصحيح
     const model = genAI.getGenerativeModel({
-      model: "models/text-embedding-004", //  مع prefix
+      model: "models/text-embedding-004", // ✅ مع prefix
     });
 
     const result = await model.embedContent(text);
@@ -56,7 +56,7 @@ function generateSimpleEmbedding(text) {
 /**
  * ========================================
  * STORE CHUNKS
- *  FIXED: استخدام Raw SQL
+ * ✅ FIXED: استخدام Raw SQL
  * ========================================
  */
 export async function storeChunks(prisma, companyId, chunks) {
@@ -66,7 +66,7 @@ export async function storeChunks(prisma, companyId, chunks) {
     try {
       const embedding = await createEmbedding(chunk.text);
 
-      //  Delete old embedding if exists (Raw SQL)
+      // ✅ Delete old embedding if exists (Raw SQL)
       await prisma.$executeRawUnsafe(
         `DELETE FROM embedding_store 
          WHERE company_id = $1 AND entity = $2 AND row_id = $3`,
@@ -75,7 +75,7 @@ export async function storeChunks(prisma, companyId, chunks) {
         chunk.recordId
       );
 
-      //  Create new embedding (Raw SQL)
+      // ✅ Create new embedding (Raw SQL)
       await prisma.$executeRawUnsafe(
         `INSERT INTO embedding_store 
          (company_id, entity, row_id, text, embedding) 
@@ -109,7 +109,7 @@ export async function storeChunks(prisma, companyId, chunks) {
 /**
  * ========================================
  * RETRIEVE SIMILAR CHUNKS
- *  FIXED: استخدام Raw SQL
+ * ✅ FIXED: استخدام Raw SQL
  * ========================================
  */
 function cosine(a, b) {
@@ -136,7 +136,7 @@ export async function retrieveSimilarChunks(
   topK = 10
 ) {
   try {
-    //  استخدام Raw SQL
+    // ✅ استخدام Raw SQL
     const rows = await prisma.$queryRawUnsafe(
       `SELECT id, entity, row_id, text, embedding 
        FROM embedding_store 
@@ -212,7 +212,7 @@ export function buildRAGContext(similarChunks, queryType) {
 /**
  * ========================================
  * GENERATE AI RESPONSE
- *  FIXED: استخدام النموذج الصحيح
+ * ✅ FIXED: استخدام النموذج الصحيح
  * ========================================
  */
 export async function generateRAGResponse(queryText, ragContext, results) {
@@ -221,9 +221,9 @@ export async function generateRAGResponse(queryText, ragContext, results) {
       return generateSimpleAnswer(results);
     }
 
-    //  استخدام النموذج الصحيح
+    // ✅ استخدام النموذج الصحيح
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash", //  بدون prefix للـ generation models
+      model: "gemini-2.5-flash", // ✅ بدون prefix للـ generation models
     });
 
     const prompt = `
@@ -463,7 +463,7 @@ export async function indexCompanyData(prisma, companyId) {
           total: customers.length,
           indexed: success,
         });
-        console.log(` العملاء: ${success}/${customers.length}`);
+        console.log(`✅ العملاء: ${success}/${customers.length}`);
       }
     } catch (error) {
       console.error(`❌ خطأ في العملاء:`, error.message);
@@ -485,7 +485,7 @@ export async function indexCompanyData(prisma, companyId) {
           total: products.length,
           indexed: success,
         });
-        console.log(` المنتجات: ${success}/${products.length}`);
+        console.log(`✅ المنتجات: ${success}/${products.length}`);
       }
     } catch (error) {
       console.error(`❌ خطأ في المنتجات:`, error.message);
@@ -507,7 +507,7 @@ export async function indexCompanyData(prisma, companyId) {
           total: invoices.length,
           indexed: success,
         });
-        console.log(` الفواتير: ${success}/${invoices.length}`);
+        console.log(`✅ الفواتير: ${success}/${invoices.length}`);
       }
     } catch (error) {
       console.error(`❌ خطأ في الفواتير:`, error.message);
@@ -534,7 +534,7 @@ export async function indexCompanyData(prisma, companyId) {
           total: payments.length,
           indexed: success,
         });
-        console.log(` الأقساط: ${success}/${payments.length}`);
+        console.log(`✅ الأقساط: ${success}/${payments.length}`);
       }
     } catch (error) {
       console.error(`❌ خطأ في الأقساط:`, error.message);
@@ -556,7 +556,7 @@ export async function indexCompanyData(prisma, companyId) {
           total: maintenance.length,
           indexed: success,
         });
-        console.log(` الصيانة: ${success}/${maintenance.length}`);
+        console.log(`✅ الصيانة: ${success}/${maintenance.length}`);
       }
     } catch (error) {
       console.error(`❌ خطأ في الصيانة:`, error.message);
@@ -577,7 +577,7 @@ export async function indexCompanyData(prisma, companyId) {
           total: employees.length,
           indexed: success,
         });
-        console.log(` الموظفين: ${success}/${employees.length}`);
+        console.log(`✅ الموظفين: ${success}/${employees.length}`);
       }
     } catch (error) {
       console.error(`❌ خطأ في الموظفين:`, error.message);
@@ -599,7 +599,7 @@ export async function indexCompanyData(prisma, companyId) {
           total: accessories.length,
           indexed: success,
         });
-        console.log(` الملحقات: ${success}/${accessories.length}`);
+        console.log(`✅ الملحقات: ${success}/${accessories.length}`);
       }
     } catch (error) {
       console.error(`❌ خطأ في الملحقات:`, error.message);
@@ -620,14 +620,14 @@ export async function indexCompanyData(prisma, companyId) {
           total: suppliers.length,
           indexed: success,
         });
-        console.log(` الموردين: ${success}/${suppliers.length}`);
+        console.log(`✅ الموردين: ${success}/${suppliers.length}`);
       }
     } catch (error) {
       console.error(`❌ خطأ في الموردين:`, error.message);
       results.push({ entity: "supplier", error: error.message });
     }
 
-    console.log(` انتهت الفهرسة`);
+    console.log(`✅ انتهت الفهرسة`);
     return results;
   } catch (error) {
     console.error("❌ فهرسة عام:", error);

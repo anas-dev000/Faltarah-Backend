@@ -7,7 +7,7 @@ export const createCheckoutSchema = {
     type: "number",
     required: true,
     validate: (value) => {
-      //  More detailed validation
+      // ✅ More detailed validation
       if (value === undefined || value === null) {
         throw new Error("Plan ID is required");
       }
@@ -54,7 +54,7 @@ export const createCheckoutSchema = {
   },
 };
 
-//  Enhanced validation middleware
+// ✅ Enhanced validation middleware
 export const validateCheckoutRequest = (request, reply, done) => {
   const { planId, companyId } = request.body;
 

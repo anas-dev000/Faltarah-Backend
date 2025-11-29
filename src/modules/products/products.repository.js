@@ -5,14 +5,9 @@
 /**
  * Find all products with filters
  */
-export const findAll = async (
-  prisma,
-  companyId = null,
-  filters = {},
-  pagination = {}
-) => {
+export const findAll = async (prisma, companyId = null, filters = {}, pagination = {}) => {
   const where = {};
-
+  
   if (companyId) {
     where.companyId = companyId;
   }
@@ -93,9 +88,10 @@ export const findAll = async (
       totalPages: Math.ceil(total / limit),
       hasNext: page < Math.ceil(total / limit),
       hasPrev: page > 1,
-    },
+    }
   };
 };
+
 
 /**
  * Find product by ID
@@ -316,7 +312,7 @@ export const update = async (prisma, id, data) => {
 };
 
 /**
- *  Delete product with all related records using transaction
+ * ✅ Delete product with all related records using transaction
  */
 export const deleteByIdWithRelations = async (prisma, id) => {
   return await prisma.$transaction(async (tx) => {

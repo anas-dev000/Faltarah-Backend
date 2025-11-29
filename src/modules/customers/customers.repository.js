@@ -266,7 +266,7 @@ export const deleteCustomer = async (prisma, id, companyId = null) => {
 };
 
 /**
- *  Delete customer with all related records using transaction
+ * ✅ Delete customer with all related records using transaction
  */
 export const deleteCustomerWithRelations = async (
   prisma,

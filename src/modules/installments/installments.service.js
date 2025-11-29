@@ -24,11 +24,7 @@ export async function getAllInstallments(prisma, currentUser, pagination = {}) {
     targetCompanyId = companyId;
   }
 
-  return await installmentsRepository.findAll(
-    prisma,
-    targetCompanyId,
-    pagination
-  );
+  return await installmentsRepository.findAll(prisma, targetCompanyId, pagination);
 }
 
 /**
@@ -170,7 +166,7 @@ export async function updateInstallment(prisma, id, data, currentUser) {
 }
 
 /**
- *  Delete installment with cascading deletion
+ * ✅ Delete installment with cascading deletion
  */
 export async function deleteInstallment(prisma, id, currentUser) {
   const { role, companyId } = currentUser;
@@ -199,6 +195,6 @@ export async function deleteInstallment(prisma, id, currentUser) {
     );
   }
 
-  //  Delete installment with all payments
+  // ✅ Delete installment with all payments
   return await installmentsRepository.deleteByIdWithRelations(prisma, id);
 }

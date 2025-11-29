@@ -8,12 +8,7 @@ import { AppError } from "../../shared/errors/AppError.js";
 /**
  * Fetch all employees according to user permissions with pagination
  */
-export const getAllEmployees = async (
-  prisma,
-  currentUser,
-  page = 1,
-  limit = 10
-) => {
+export const getAllEmployees = async (prisma, currentUser, page = 1, limit = 10) => {
   const { role, companyId } = currentUser;
 
   if (!["developer", "manager", "employee"].includes(role)) {
@@ -47,7 +42,11 @@ export const getEmployeeById = async (prisma, id, currentUser) => {
 /**
  * Fetch employees by role (SalesRep / Technician)
  */
-export const getEmployeesByRole = async (prisma, employeeRole, currentUser) => {
+export const getEmployeesByRole = async (
+  prisma,
+  employeeRole,
+  currentUser
+) => {
   const { role, companyId } = currentUser;
 
   return employeeRepo.findEmployeesByRole(
@@ -94,19 +93,11 @@ export const getEmployeesByStatus = async (prisma, statusWord, currentUser) => {
   let isEmployed;
   if (statusWord.toLowerCase() === "active") isEmployed = true;
   else if (statusWord.toLowerCase() === "inactive") isEmployed = false;
-  else
-    throw new AppError(
-      "Invalid status parameter, use 'active' or 'inactive'",
-      400
-    );
+  else throw new AppError("Invalid status parameter, use 'active' or 'inactive'", 400);
 
   const targetCompanyId = role === "developer" ? null : companyId;
 
-  return employeeRepo.findEmployeesByStatus(
-    prisma,
-    isEmployed,
-    targetCompanyId
-  );
+  return employeeRepo.findEmployeesByStatus(prisma, isEmployed, targetCompanyId);
 };
 
 /**
@@ -127,9 +118,7 @@ export const countEmployees = async (prisma, currentUser) => {
  */
 export const createNewEmployee = async (prisma, data, currentUser) => {
   if (!data.fullName || !data.nationalId || !data.primaryNumber) {
-    throw new Error(
-      "Missing required fields: fullName, nationalId, or primaryNumber"
-    );
+    throw new Error("Missing required fields: fullName, nationalId, or primaryNumber");
   }
 
   const existingEmployee = await prisma.employee.findFirst({
@@ -193,10 +182,8 @@ export const updateExistingEmployee = async (prisma, id, data, currentUser) => {
   if (data.fullName !== undefined) updateData.fullName = data.fullName;
   if (data.nationalId !== undefined) updateData.nationalId = data.nationalId;
   if (data.role !== undefined) updateData.role = data.role;
-  if (data.primaryNumber !== undefined)
-    updateData.primaryNumber = data.primaryNumber;
-  if (data.secondaryNumber !== undefined)
-    updateData.secondaryNumber = data.secondaryNumber;
+  if (data.primaryNumber !== undefined) updateData.primaryNumber = data.primaryNumber;
+  if (data.secondaryNumber !== undefined) updateData.secondaryNumber = data.secondaryNumber;
   if (data.governorate !== undefined) updateData.governorate = data.governorate;
   if (data.city !== undefined) updateData.city = data.city;
   if (data.district !== undefined) updateData.district = data.district;
@@ -241,7 +228,7 @@ export const updateExistingEmployee = async (prisma, id, data, currentUser) => {
 };
 
 /**
- *  Delete an employee by ID with cascading deletion
+ * ✅ Delete an employee by ID with cascading deletion
  */
 export const deleteExistingEmployee = async (prisma, id, currentUser) => {
   const { role, companyId } = currentUser;
@@ -260,10 +247,10 @@ export const deleteExistingEmployee = async (prisma, id, currentUser) => {
     throw new AppError("Employee not found or access denied", 404);
   }
 
-  //  Delete employee with all related records using transaction
+  // ✅ Delete employee with all related records using transaction
   return employeeRepo.deleteEmployeeWithRelations(
-    prisma,
-    id,
+    prisma, 
+    id, 
     role === "developer" ? null : companyId
   );
 };

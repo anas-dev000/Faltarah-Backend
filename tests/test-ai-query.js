@@ -82,7 +82,7 @@ async function runTest(testCase) {
 
     // Validate response structure
     if (data.data) {
-      console.log(` Success`);
+      console.log(`✅ Success`);
 
       if (testCase.isHistory) {
         console.log(`History Count: ${data.count}`);
@@ -154,7 +154,7 @@ async function runAllTests() {
   const failed = results.filter((r) => !r.passed).length;
 
   results.forEach((r) => {
-    const status = r.passed ? "" : "❌";
+    const status = r.passed ? "✅" : "❌";
     console.log(`${status} ${r.name}`);
   });
 

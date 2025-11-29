@@ -8,7 +8,7 @@ import { PrismaClient } from "@prisma/client";
 import * as subService from "../../modules/subscriptions/subscriptions.service.js";
 import {
   sendDiscountOfferEmail,
-  sendFinalWarningEmail,
+  sendFinalWarningEmail
 } from "../../shared/utils/email.service.js";
 
 const prisma = new PrismaClient();
@@ -24,7 +24,7 @@ export const checkExpiredSubscriptions = cron.schedule(
 
     try {
       const result = await subService.markExpiredSubscriptions(prisma);
-      console.log(` Marked ${result.expiredCount} subscriptions as expired`);
+      console.log(`✅ Marked ${result.expiredCount} subscriptions as expired`);
     } catch (error) {
       console.error("❌ Error in checkExpiredSubscriptions job:", error);
     }
@@ -46,7 +46,7 @@ export const sendExpiryAlerts = cron.schedule(
 
     try {
       await subService.checkAndSendExpiryAlerts(prisma);
-      console.log(" Expiry alerts sent successfully");
+      console.log("✅ Expiry alerts sent successfully");
     } catch (error) {
       console.error("❌ Error in sendExpiryAlerts job:", error);
     }
@@ -79,25 +79,23 @@ export const sendDiscountOffers = cron.schedule(
         where: {
           createdAt: {
             lte: tenDaysAgo, // مرت على الأقل 10 أيام
-            gte: twentyDaysAgo, // لم تمر 20 يوم بعد
+            gte: twentyDaysAgo // لم تمر 20 يوم بعد
           },
           subscriptions: {
             none: {
-              paymentStatus: "paid",
-            },
-          },
+              paymentStatus: 'paid'
+            }
+          }
         },
         select: {
           id: true,
           name: true,
           email: true,
-          createdAt: true,
-        },
+          createdAt: true
+        }
       });
 
-      console.log(
-        `📊 Found ${expiredTrialCompanies.length} companies eligible for discount offer`
-      );
+      console.log(`📊 Found ${expiredTrialCompanies.length} companies eligible for discount offer`);
 
       for (const company of expiredTrialCompanies) {
         const daysSinceCreation = Math.floor(
@@ -107,24 +105,18 @@ export const sendDiscountOffers = cron.schedule(
         // بعد 10 أيام من انتهاء التجربة (20 يوم من التسجيل)
         if (daysSinceCreation === 20 && company.email) {
           await sendDiscountOfferEmail(company.email, company.name);
-          console.log(` Sent discount offer to: ${company.name}`);
+          console.log(`✅ Sent discount offer to: ${company.name}`);
         }
 
         // تذكير يومي خلال الـ 5 أيام الأخيرة
-        if (
-          daysSinceCreation >= 20 &&
-          daysSinceCreation < 25 &&
-          company.email
-        ) {
+        if (daysSinceCreation >= 20 && daysSinceCreation < 25 && company.email) {
           const daysLeft = 25 - daysSinceCreation;
           await sendFinalWarningEmail(company.email, company.name, daysLeft);
-          console.log(
-            `⚠️ Sent final warning (${daysLeft} days left) to: ${company.name}`
-          );
+          console.log(`⚠️ Sent final warning (${daysLeft} days left) to: ${company.name}`);
         }
       }
 
-      console.log(" Discount offers sent successfully");
+      console.log("✅ Discount offers sent successfully");
     } catch (error) {
       console.error("❌ Error in sendDiscountOffers job:", error);
     }
@@ -153,20 +145,20 @@ export const deleteExpiredTrialCompanies = cron.schedule(
       const companiesToDelete = await prisma.company.findMany({
         where: {
           createdAt: {
-            lte: twentyFiveDaysAgo,
+            lte: twentyFiveDaysAgo
           },
           subscriptions: {
             none: {
-              status: "active",
-            },
-          },
+              status: 'active'
+            }
+          }
         },
         select: {
           id: true,
           name: true,
           email: true,
-          createdAt: true,
-        },
+          createdAt: true
+        }
       });
 
       console.log(`📊 Found ${companiesToDelete.length} companies to delete`);
@@ -176,51 +168,45 @@ export const deleteExpiredTrialCompanies = cron.schedule(
           // حذف الشركة بالكامل
           await prisma.$transaction(async (tx) => {
             // حذف كل البيانات المرتبطة
-            await tx.invoiceItem.deleteMany({
-              where: { companyId: company.id },
-            });
-
+            await tx.invoiceItem.deleteMany({ where: { companyId: company.id } });
+            
             const invoices = await tx.invoice.findMany({
               where: { companyId: company.id },
-              select: { id: true },
+              select: { id: true }
             });
-            const invoiceIds = invoices.map((inv) => inv.id);
+            const invoiceIds = invoices.map(inv => inv.id);
 
             if (invoiceIds.length > 0) {
               const installments = await tx.installment.findMany({
                 where: { invoiceId: { in: invoiceIds } },
-                select: { id: true },
+                select: { id: true }
               });
-              const installmentIds = installments.map((inst) => inst.id);
+              const installmentIds = installments.map(inst => inst.id);
 
               if (installmentIds.length > 0) {
                 await tx.installmentPayment.deleteMany({
-                  where: { installmentId: { in: installmentIds } },
+                  where: { installmentId: { in: installmentIds } }
                 });
               }
 
               await tx.installment.deleteMany({
-                where: { invoiceId: { in: invoiceIds } },
+                where: { invoiceId: { in: invoiceIds } }
               });
             }
 
             await tx.invoice.deleteMany({ where: { companyId: company.id } });
-            await tx.maintenance.deleteMany({
-              where: { companyId: company.id },
-            });
-            await tx.customerMaintenanceStatus.deleteMany({
-              where: { companyId: company.id },
-            });
+            await tx.maintenance.deleteMany({ where: { companyId: company.id } });
+            await tx.customerMaintenanceStatus.deleteMany({ where: { companyId: company.id } });
 
             const products = await tx.product.findMany({
               where: { companyId: company.id },
-              select: { id: true },
+              select: { id: true }
             });
-            const productIds = products.map((p) => p.id);
+            const productIds = products.map(p => p.id);
 
             if (productIds.length > 0) {
               await tx.productAccessory.deleteMany({
-                where: { productId: { in: productIds } },
+                where: { productId: { in: productIds } }
               });
             }
 
@@ -231,44 +217,34 @@ export const deleteExpiredTrialCompanies = cron.schedule(
             await tx.employee.deleteMany({ where: { companyId: company.id } });
             await tx.customer.deleteMany({ where: { companyId: company.id } });
             await tx.user.deleteMany({ where: { companyId: company.id } });
-            await tx.subscriptionInvoice.deleteMany({
-              where: { companyId: company.id },
-            });
-
+            await tx.subscriptionInvoice.deleteMany({ where: { companyId: company.id } });
+            
             const subscriptions = await tx.subscription.findMany({
               where: { companyId: company.id },
-              select: { id: true },
+              select: { id: true }
             });
-
+            
             if (subscriptions.length > 0) {
               await tx.subscriptionAlert.deleteMany({
-                where: {
-                  subscriptionId: { in: subscriptions.map((s) => s.id) },
-                },
+                where: { subscriptionId: { in: subscriptions.map(s => s.id) } }
               });
             }
-
-            await tx.subscription.deleteMany({
-              where: { companyId: company.id },
-            });
+            
+            await tx.subscription.deleteMany({ where: { companyId: company.id } });
 
             // حذف الشركة نفسها
             await tx.company.delete({
-              where: { id: company.id },
+              where: { id: company.id }
             });
           });
 
-          console.log(
-            `🗑️ Deleted company: ${company.name} (ID: ${company.id})`
-          );
+          console.log(`🗑️ Deleted company: ${company.name} (ID: ${company.id})`);
         } catch (error) {
           console.error(`❌ Error deleting company ${company.name}:`, error);
         }
       }
 
-      console.log(
-        ` Deleted ${companiesToDelete.length} expired trial companies`
-      );
+      console.log(`✅ Deleted ${companiesToDelete.length} expired trial companies`);
     } catch (error) {
       console.error("❌ Error in deleteExpiredTrialCompanies job:", error);
     }
@@ -297,7 +273,7 @@ export const startSubscriptionJobs = () => {
   deleteExpiredTrialCompanies.start();
   console.log("   ✓ Delete Expired Trial Companies: Running daily at 2:00 AM");
 
-  console.log(" All subscription jobs started successfully");
+  console.log("✅ All subscription jobs started successfully");
 };
 
 /**

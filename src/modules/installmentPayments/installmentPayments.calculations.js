@@ -75,7 +75,7 @@ export function processPaymentAndCreateNext(
     carryoverAmount: carryover,
     overdueAmount: carryover,
     paymentDate: new Date(),
-    //  حفظ الملاحظات اللي المستخدم كتبها
+    // ✅ حفظ الملاحظات اللي المستخدم كتبها
     notes: userNotes || payment.notes || null,
   };
 
@@ -99,8 +99,12 @@ export function processPaymentAndCreateNext(
     overdueAmount: 0,
     dueDate: nextPaymentDueDate,
     paymentDate: null,
-    //  رسالة تلقائية للقسط الجديد فقط (مش للقسط الحالي)
-    notes: `قسط متتالي - ${carryover > 0 ? `رصيد مرحل ` : "بدون أرصدة مرحلة"}`,
+    // ✅ رسالة تلقائية للقسط الجديد فقط (مش للقسط الحالي)
+    notes: `قسط متتالي - ${
+      carryover > 0
+        ? `رصيد مرحل `
+        : "بدون أرصدة مرحلة"
+    }`,
   };
 
   return {

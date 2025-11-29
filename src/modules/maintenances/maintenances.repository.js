@@ -388,7 +388,7 @@ export const bulkUpdateStatus = async (prisma, maintenanceIds, status) => {
 };
 
 /**
- *  Delete maintenance record (simple - no cascading needed)
+ * ✅ Delete maintenance record (simple - no cascading needed)
  */
 export const deleteById = async (prisma, id) => {
   return prisma.maintenance.delete({

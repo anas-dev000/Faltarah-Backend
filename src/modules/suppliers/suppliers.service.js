@@ -185,7 +185,7 @@ export async function updateSupplier(prisma, id, data, currentUser) {
 }
 
 /**
- *  Delete supplier with cascading deletion
+ * ✅ Delete supplier with cascading deletion
  */
 export async function deleteSupplier(prisma, id, currentUser) {
   const { role, companyId } = currentUser;
@@ -214,6 +214,6 @@ export async function deleteSupplier(prisma, id, currentUser) {
     );
   }
 
-  //  Delete supplier with all related records
+  // ✅ Delete supplier with all related records
   return await suppliersRepository.deleteByIdWithRelations(prisma, id);
 }

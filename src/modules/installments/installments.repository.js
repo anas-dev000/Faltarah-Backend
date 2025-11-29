@@ -73,7 +73,7 @@ export async function findAll(prisma, companyId = null, pagination = {}) {
       totalPages: Math.ceil(total / limit),
       hasNext: page < Math.ceil(total / limit),
       hasPrev: page > 1,
-    },
+    }
   };
 }
 
@@ -175,7 +175,7 @@ export async function update(prisma, id, data) {
 }
 
 /**
- *  Delete installment with cascading deletion of payments
+ * ✅ Delete installment with cascading deletion of payments
  */
 export async function deleteByIdWithRelations(prisma, id) {
   return await prisma.$transaction(async (tx) => {

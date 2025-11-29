@@ -2,13 +2,7 @@
 // employees.controller.js
 // ==========================================
 
-import {
-  uploadToCloudinary,
-  deleteFromCloudinary,
-  deleteCloudinaryFolder,
-  deleteEntityFolder,
-  uploadBufferToCloudinary,
-} from "../../shared/utils/fileUpload.js";
+import { uploadToCloudinary, deleteFromCloudinary, deleteCloudinaryFolder , deleteEntityFolder , uploadBufferToCloudinary} from "../../shared/utils/fileUpload.js";
 import * as employeeService from "./employees.service.js";
 
 /**
@@ -119,17 +113,18 @@ export const getByStatus = async (request, reply) => {
   });
 };
 
+
 /**
  * Get company name helper
  */
 const getCompanyName = async (prisma, companyId) => {
   if (!companyId) return "";
-
+  
   const company = await prisma.company.findUnique({
     where: { id: companyId },
     select: { name: true },
   });
-
+  
   return company?.name || "";
 };
 /**
@@ -152,7 +147,7 @@ export const create = async (request, reply) => {
     const data = {};
     const fileBuffers = [];
 
-    //  Step 1: Collect ALL parts first (fields + file buffer)
+    // ✅ Step 1: Collect ALL parts first (fields + file buffer)
     for await (const part of parts) {
       if (part.type === "file" && part.fieldname === "idCardImage") {
         const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
@@ -180,12 +175,12 @@ export const create = async (request, reply) => {
       }
     }
 
-    //  Convert isEmployed to Boolean
+    // ✅ Convert isEmployed to Boolean
     if (data.isEmployed !== undefined) {
       data.isEmployed = data.isEmployed === "true" || data.isEmployed === true;
     }
 
-    //  Step 2: Now upload with complete data
+    // ✅ Step 2: Now upload with complete data
     if (fileBuffers.length > 0) {
       const companyName = await getCompanyName(
         request.server.prisma,
@@ -224,7 +219,7 @@ export const create = async (request, reply) => {
       data: employee,
     });
   } catch (error) {
-    //  Rollback: delete uploaded image if employee creation fails
+    // ✅ Rollback: delete uploaded image if employee creation fails
     if (uploadedImage?.public_id) {
       await deleteFromCloudinary(uploadedImage.public_id);
     }
@@ -233,6 +228,7 @@ export const create = async (request, reply) => {
     throw error;
   }
 };
+
 
 /**
  * Update employee with optional ID card image
@@ -281,7 +277,7 @@ export const update = async (request, reply) => {
       const parts = request.parts();
       const fileBuffers = [];
 
-      //  Step 1: Collect ALL parts first (fields + file buffer)
+      // ✅ Step 1: Collect ALL parts first (fields + file buffer)
       for await (const part of parts) {
         if (part.type === "file" && part.fieldname === "idCardImage") {
           const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
@@ -309,13 +305,12 @@ export const update = async (request, reply) => {
         }
       }
 
-      //  NEW: Convert string booleans back to actual booleans
+      // ✅ NEW: Convert string booleans back to actual booleans
       if (data.isEmployed !== undefined) {
-        data.isEmployed =
-          data.isEmployed === "true" || data.isEmployed === true;
+        data.isEmployed = data.isEmployed === 'true' || data.isEmployed === true;
       }
 
-      //  Step 2: Now upload with complete data
+      // ✅ Step 2: Now upload with complete data
       if (fileBuffers.length > 0) {
         const companyName = await getCompanyName(
           request.server.prisma,
@@ -334,8 +329,7 @@ export const update = async (request, reply) => {
           {
             companyName: companyName || "unknown-company",
             employeeRole: data.role || existingEmployee.role || "unknown-role",
-            employeeName:
-              data.fullName || existingEmployee.fullName || "unknown-employee",
+            employeeName: data.fullName || existingEmployee.fullName || "unknown-employee",
           }
         );
 
@@ -344,13 +338,10 @@ export const update = async (request, reply) => {
       }
     } else {
       data = request.body;
-
-      //  NEW: Also handle for non-multipart requests
-      if (
-        data.isEmployed !== undefined &&
-        typeof data.isEmployed === "string"
-      ) {
-        data.isEmployed = data.isEmployed === "true";
+      
+      // ✅ NEW: Also handle for non-multipart requests
+      if (data.isEmployed !== undefined && typeof data.isEmployed === 'string') {
+        data.isEmployed = data.isEmployed === 'true';
       }
     }
 
@@ -361,7 +352,7 @@ export const update = async (request, reply) => {
       currentUser
     );
 
-    //  Delete old image ONLY if new image was uploaded successfully
+    // ✅ Delete old image ONLY if new image was uploaded successfully
     if (uploadedImage && oldImagePublicId) {
       await deleteFromCloudinary(oldImagePublicId);
     }
@@ -372,7 +363,7 @@ export const update = async (request, reply) => {
       data: updatedEmployee,
     });
   } catch (error) {
-    //  Rollback: delete newly uploaded image if update fails
+    // ✅ Rollback: delete newly uploaded image if update fails
     if (uploadedImage?.public_id) {
       await deleteFromCloudinary(uploadedImage.public_id);
     }
@@ -408,14 +399,14 @@ export const deleteById = async (request, reply) => {
       });
     }
 
-    //  Delete employee from database
+    // ✅ Delete employee from database
     await employeeService.deleteExistingEmployee(
       request.server.prisma,
       Number(id),
       currentUser
     );
 
-    //  Delete individual image from Cloudinary (if exists)
+    // ✅ Delete individual image from Cloudinary (if exists)
     if (employee.idCardImagePublicId) {
       try {
         await deleteFromCloudinary(employee.idCardImagePublicId);
@@ -424,7 +415,7 @@ export const deleteById = async (request, reply) => {
       }
     }
 
-    //  Delete entire employee folder using dynamic path
+    // ✅ Delete entire employee folder using dynamic path
     try {
       const companyName = await getCompanyName(
         request.server.prisma,

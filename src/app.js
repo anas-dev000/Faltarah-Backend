@@ -10,7 +10,7 @@ import corsPlugin from "./plugins/cors.js";
 import helmetPlugin from "./plugins/helmet.js";
 import fastifyCookie from "@fastify/cookie";
 import fastifyMultipart from "@fastify/multipart";
-import fastifyRawBody from "fastify-raw-body";
+import fastifyRawBody from "fastify-raw-body"; // NEW
 
 // Routes
 import authRoutes from "./modules/auth/auth.routes.js";
@@ -53,19 +53,11 @@ export async function buildApp(opts = {}) {
 
   // Register plugins
   await app.register(corsPlugin);
-
   await app.register(helmetPlugin);
 
   await app.register(fastifyCookie, {
     secret: config.cookieSecret,
-    parseOptions: {
-      httpOnly: true,
-      sameSite: config.nodeEnv === "production" ? "none" : "lax",
-      secure: config.nodeEnv === "production",
-      path: "/",
-      domain: config.nodeEnv === "production" ? undefined : "localhost",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    },
+    parseOptions: {},
   });
 
   await app.register(prismaPlugin);
@@ -90,7 +82,7 @@ export async function buildApp(opts = {}) {
   app.addHook("onRequest", async (request, reply) => {
     // Skip auth routes and public routes
     const publicRoutes = [
-      "/api/users/login",
+      "/api/auth/login",
       "/api/auth/signup",
       "/api/auth/verify-otp",
       "/api/auth/resend-otp",
@@ -100,9 +92,18 @@ export async function buildApp(opts = {}) {
       "/api/subscriptions/plans",
     ];
 
-    if (!publicRoutes.some((route) => request.url.startsWith(route))) {
-      await authenticate(request, reply);
-      await checkSubscriptionInfo(request, reply);
+    if (publicRoutes.some((route) => request.url.startsWith(route))) {
+      return;
+    }
+
+    // For authenticated routes, add subscription info
+    if (request.headers.authorization) {
+      try {
+        await authenticate(request, reply);
+        await checkSubscriptionInfo(request, reply);
+      } catch (error) {
+        // Continue even if there's an error
+      }
     }
   });
 

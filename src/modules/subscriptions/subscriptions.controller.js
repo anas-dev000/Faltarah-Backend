@@ -54,7 +54,7 @@ export const getCompanyStatus = async (request, reply) => {
       companyId
     );
 
-    //  Return with proper structure
+    // ✅ Return with proper structure
     return reply.send({
       success: true,
       data: status,
@@ -75,16 +75,16 @@ export const getSubscriptionStats = async (request, reply) => {
   const currentUser = request.user;
 
   // Only developer can access
-  if (currentUser.role !== "developer") {
+  if (currentUser.role !== 'developer') {
     return reply.status(403).send({
       success: false,
-      error: "Forbidden: Only developers can view subscription stats",
+      error: 'Forbidden: Only developers can view subscription stats'
     });
   }
 
   try {
     const { month, year } = request.query;
-
+    
     const stats = await subService.getSubscriptionStatistics(
       request.server.prisma,
       month ? parseInt(month) : null,
@@ -93,13 +93,13 @@ export const getSubscriptionStats = async (request, reply) => {
 
     return reply.send({
       success: true,
-      data: stats,
+      data: stats
     });
   } catch (error) {
-    console.error("❌ Stats error:", error);
+    console.error('❌ Stats error:', error);
     return reply.status(500).send({
       success: false,
-      error: error.message,
+      error: error.message
     });
   }
 };
@@ -110,16 +110,16 @@ export const getSubscriptionStats = async (request, reply) => {
 export const getMonthlyRevenue = async (request, reply) => {
   const currentUser = request.user;
 
-  if (currentUser.role !== "developer") {
+  if (currentUser.role !== 'developer') {
     return reply.status(403).send({
       success: false,
-      error: "Forbidden: Only developers can view revenue reports",
+      error: 'Forbidden: Only developers can view revenue reports'
     });
   }
 
   try {
     const { year } = request.query;
-
+    
     const report = await subService.getMonthlyRevenueReport(
       request.server.prisma,
       year ? parseInt(year) : new Date().getFullYear()
@@ -127,13 +127,13 @@ export const getMonthlyRevenue = async (request, reply) => {
 
     return reply.send({
       success: true,
-      data: report,
+      data: report
     });
   } catch (error) {
-    console.error("❌ Revenue report error:", error);
+    console.error('❌ Revenue report error:', error);
     return reply.status(500).send({
       success: false,
-      error: error.message,
+      error: error.message
     });
   }
 };
@@ -144,7 +144,7 @@ export const createCheckoutSession = async (request, reply) => {
   const currentUser = request.user;
   const { planId, companyId: requestCompanyId } = request.body;
 
-  //  Strict validation
+  // ✅ Strict validation
   if (!planId) {
     return reply.status(400).send({
       success: false,
@@ -194,6 +194,7 @@ export const createCheckoutSession = async (request, reply) => {
   }
 
   try {
+
     const result = await subService.createCheckoutSession(
       request.server.prisma,
       companyId,
@@ -201,7 +202,8 @@ export const createCheckoutSession = async (request, reply) => {
       currentUser
     );
 
-    //  Return with proper structure
+
+    // ✅ Return with proper structure
     return reply.send({
       success: true,
       data: result,
@@ -220,13 +222,13 @@ export const createCheckoutSession = async (request, reply) => {
 // ==========================================
 export const handleStripeWebhook = async (request, reply) => {
   const sig = request.headers["stripe-signature"];
-  //  Use rawBody instead of body
+  // ✅ Use rawBody instead of body
   const rawBody = request.rawBody || request.body;
 
   let event;
 
   try {
-    //  For development: Increase tolerance window
+    // ✅ For development: Increase tolerance window
     const webhookOptions = {
       tolerance: 600, // 10 minutes tolerance for development
     };
@@ -245,6 +247,7 @@ export const handleStripeWebhook = async (request, reply) => {
         config.stripe.webhookSecret
       );
     }
+
   } catch (err) {
     console.error("❌ Webhook verification failed:", {
       error: err.message,
@@ -347,7 +350,7 @@ export const markAlertsRead = async (request, reply) => {
 export const getVerificationStatus = async (request, reply) => {
   const currentUser = request.user;
 
-  //  Developer never needs subscription
+  // ✅ Developer never needs subscription
   if (currentUser.role === "developer") {
     return reply.send({
       success: true,

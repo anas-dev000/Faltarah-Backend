@@ -1,9 +1,4 @@
-export const findAllServices = async (
-  prisma,
-  companyId = null,
-  skip = 0,
-  take = 10
-) => {
+export const findAllServices = async (prisma, companyId = null, skip = 0, take = 10) => {
   const whereClause = companyId ? { companyId } : {};
 
   const [services, total] = await Promise.all([
@@ -11,7 +6,7 @@ export const findAllServices = async (
       where: whereClause,
       skip,
       take,
-      orderBy: { id: "desc" },
+      orderBy: { id: 'desc' },
       select: {
         id: true,
         name: true,
@@ -32,15 +27,8 @@ export const findAllServices = async (
   return { services, total };
 };
 
-export const findServiceById = async (
-  prisma,
-  id,
-  restrictToCompanyId = null
-) => {
-  const whereClause = {
-    id,
-    ...(restrictToCompanyId && { companyId: restrictToCompanyId }),
-  };
+export const findServiceById = async (prisma, id, restrictToCompanyId = null) => {
+  const whereClause = { id, ...(restrictToCompanyId && { companyId: restrictToCompanyId }) };
   return prisma.service.findFirst({
     where: whereClause,
     select: {
@@ -59,19 +47,9 @@ export const findServiceById = async (
   });
 };
 
-export const findServiceByName = async (
-  prisma,
-  name,
-  excludeServiceId = null
-) => {
-  const whereClause = {
-    name,
-    ...(excludeServiceId && { id: { not: excludeServiceId } }),
-  };
-  return prisma.service.findFirst({
-    where: whereClause,
-    select: { id: true, name: true },
-  });
+export const findServiceByName = async (prisma, name, excludeServiceId = null) => {
+  const whereClause = { name, ...(excludeServiceId && { id: { not: excludeServiceId } }) };
+  return prisma.service.findFirst({ where: whereClause, select: { id: true, name: true } });
 };
 
 export const createService = async (prisma, data) => {
@@ -83,7 +61,7 @@ export const updateService = async (prisma, id, data) => {
 };
 
 /**
- *  Delete service with cascading deletion using transaction
+ * ✅ Delete service with cascading deletion using transaction
  */
 export const deleteServiceWithRelations = async (prisma, id) => {
   return await prisma.$transaction(async (tx) => {
@@ -107,7 +85,7 @@ export const deleteServiceWithRelations = async (prisma, id) => {
 };
 
 /**
- *  Check service relations (for information only)
+ * ✅ Check service relations (for information only)
  */
 export const checkServiceRelations = async (prisma, id) => {
   const service = await prisma.service.findUnique({
@@ -118,13 +96,6 @@ export const checkServiceRelations = async (prisma, id) => {
   });
   if (!service) return null;
 
-  const totalRelations = Object.values(service._count).reduce(
-    (sum, count) => sum + count,
-    0
-  );
-  return {
-    hasRelations: totalRelations > 0,
-    counts: service._count,
-    totalRelations,
-  };
+  const totalRelations = Object.values(service._count).reduce((sum, count) => sum + count, 0);
+  return { hasRelations: totalRelations > 0, counts: service._count, totalRelations };
 };

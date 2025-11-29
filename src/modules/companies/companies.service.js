@@ -118,9 +118,9 @@ export const updateExistingCompany = async (prisma, id, data, currentUser) => {
       );
     }
     targetCompany = await prisma.company.findFirst({
-      where: {
+      where: { 
         id: Number(id),
-        id: companyId,
+        id: companyId 
       },
     });
   } else {
@@ -137,10 +137,10 @@ export const updateExistingCompany = async (prisma, id, data, currentUser) => {
     const nameExists = await prisma.company.findFirst({
       where: {
         name: data.name,
-        id: { not: Number(id) },
-      },
+        id: { not: Number(id) }
+      }
     });
-
+    
     if (nameExists) {
       throw new AppError("Company name already exists", 409);
     }
@@ -236,9 +236,7 @@ export const updateCompanySubscription = async (
   // 🔥 منع تقليل الاشتراك
   if (newDate < currentExpiry) {
     throw new AppError(
-      `Cannot reduce subscription period. Current expiry is ${
-        currentExpiry.toISOString().split("T")[0]
-      }`,
+      `Cannot reduce subscription period. Current expiry is ${currentExpiry.toISOString().split('T')[0]}`,
       400
     );
   }
@@ -250,8 +248,9 @@ export const updateCompanySubscription = async (
   return companyRepo.updateCompany(prisma, id, updateData);
 };
 
+
 /**
- *  Delete company with cascading deletion (Developer only)
+ * ✅ Delete company with cascading deletion (Developer only)
  */
 export const deleteExistingCompany = async (prisma, id, currentUser) => {
   const { role, companyId } = currentUser;
@@ -272,6 +271,6 @@ export const deleteExistingCompany = async (prisma, id, currentUser) => {
     throw new AppError("Company not found", 404);
   }
 
-  //  Delete company with all related records using transaction
+  // ✅ Delete company with all related records using transaction
   return companyRepo.deleteCompanyWithRelations(prisma, id);
 };

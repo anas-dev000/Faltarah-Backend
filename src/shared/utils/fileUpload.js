@@ -19,13 +19,7 @@ const sanitizeName = (name) => {
  * @returns {String} - Folder path
  */
 const buildFolderPath = (entityType, options = {}) => {
-  const {
-    companyName,
-    customerType,
-    customerName,
-    employeeRole,
-    employeeName,
-  } = options;
+  const { companyName, customerType, customerName, employeeRole, employeeName } = options;
 
   const sanitizedCompany = sanitizeName(companyName || "unknown-company");
 
@@ -33,17 +27,13 @@ const buildFolderPath = (entityType, options = {}) => {
     case "customer":
       // customers/CompanyName/CustomerType/CustomerName
       const sanitizedType = sanitizeName(customerType || "unknown-type");
-      const sanitizedCustomer = sanitizeName(
-        customerName || "unknown-customer"
-      );
+      const sanitizedCustomer = sanitizeName(customerName || "unknown-customer");
       return `customers/${sanitizedCompany}/${sanitizedType}/${sanitizedCustomer}`;
 
     case "employee":
       // employees/CompanyName/Role/EmployeeName
       const sanitizedRole = sanitizeName(employeeRole || "unknown-role");
-      const sanitizedEmployee = sanitizeName(
-        employeeName || "unknown-employee"
-      );
+      const sanitizedEmployee = sanitizeName(employeeName || "unknown-employee");
       return `employees/${sanitizedCompany}/${sanitizedRole}/${sanitizedEmployee}`;
 
     case "company":
@@ -199,7 +189,7 @@ export const deleteFromCloudinary = async (publicIdOrUrl) => {
     const result = await cloudinary.uploader.destroy(publicId);
 
     if (result.result === "ok") {
-      console.log(` Deleted from Cloudinary: ${publicId}`);
+      console.log(`✅ Deleted from Cloudinary: ${publicId}`);
     } else {
       console.log(`⚠️ Could not delete (may not exist): ${publicId}`);
     }
@@ -227,32 +217,23 @@ export const deleteCloudinaryFolder = async (folderPath) => {
     });
 
     if (resources.resources && resources.resources.length > 0) {
-      const publicIds = resources.resources.map(
-        (resource) => resource.public_id
-      );
+      const publicIds = resources.resources.map((resource) => resource.public_id);
 
       await cloudinary.api.delete_resources(publicIds);
-      console.log(
-        ` Deleted ${publicIds.length} resources from folder: ${folderPath}`
-      );
+      console.log(`✅ Deleted ${publicIds.length} resources from folder: ${folderPath}`);
     }
 
     // Delete the folder itself
     const folderResult = await cloudinary.api.delete_folder(folderPath);
 
-    if (
-      folderResult.deleted &&
-      folderResult.deleted[folderPath] === "deleted"
-    ) {
-      console.log(` Folder deleted: ${folderPath}`);
+    if (folderResult.deleted && folderResult.deleted[folderPath] === "deleted") {
+      console.log(`✅ Folder deleted: ${folderPath}`);
     }
 
     return folderResult;
   } catch (error) {
     if (error.error && error.error.message === "Can't find folder with path") {
-      console.log(
-        `⚠️ Folder not found (may have been already deleted): ${folderPath}`
-      );
+      console.log(`⚠️ Folder not found (may have been already deleted): ${folderPath}`);
       return;
     }
 

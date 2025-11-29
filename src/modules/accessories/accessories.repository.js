@@ -5,12 +5,7 @@
 /**
  * Find all accessories with filters
  */
-export const findAll = async (
-  prisma,
-  companyId = null,
-  filters = {},
-  pagination = {}
-) => {
+export const findAll = async (prisma, companyId = null, filters = {}, pagination = {}) => {
   const where = {};
 
   if (companyId) {
@@ -84,7 +79,7 @@ export const findAll = async (
       totalPages: Math.ceil(total / limit),
       hasNext: page < Math.ceil(total / limit),
       hasPrev: page > 1,
-    },
+    }
   };
 };
 
@@ -288,7 +283,7 @@ export const deleteById = async (prisma, id) => {
 };
 
 /**
- *  Delete accessory with all related records using transaction
+ * ✅ Delete accessory with all related records using transaction
  */
 export const deleteByIdWithRelations = async (prisma, id) => {
   return await prisma.$transaction(async (tx) => {

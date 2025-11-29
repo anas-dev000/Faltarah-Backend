@@ -10,7 +10,7 @@ import * as userService from "./users.service.js";
 export const getAll = async (request, reply) => {
   // From the authenticate middleware
   const currentUser = request.user;
-
+  
   const pagination = {
     page: request.query.page || 1,
     limit: request.query.limit || 10,
@@ -117,12 +117,7 @@ export const login = async (request, reply) => {
     password
   );
 
-  console.log("result =================================>>>>>>>>>>>>", result);
   const isProduction = process.env.NODE_ENV === "production";
-  console.log(
-    "isProduction =================================>>>>>>>>>>>>",
-    isProduction
-  );
 
   reply
     .setCookie("token", result.token, {
@@ -139,6 +134,7 @@ export const login = async (request, reply) => {
       data: result,
     });
 };
+
 
 /**
  * Developer Login
