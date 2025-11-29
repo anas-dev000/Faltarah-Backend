@@ -57,7 +57,11 @@ export async function buildApp(opts = {}) {
 
   await app.register(fastifyCookie, {
     secret: config.cookieSecret,
-    parseOptions: {},
+    parseOptions: {
+      httpOnly: true,
+      sameSite: "none",
+      secure: true,
+    },
   });
 
   await app.register(prismaPlugin);
