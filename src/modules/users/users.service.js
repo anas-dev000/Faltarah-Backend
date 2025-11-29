@@ -292,6 +292,11 @@ export const loginUser = async (prisma, email, password) => {
     companyId: user.companyId,
   });
 
+  console.log(
+    "token ================================= Service >>>>>>>>>>>>",
+    token
+  );
+
   return {
     token,
     user: {

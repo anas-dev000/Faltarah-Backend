@@ -7,6 +7,7 @@ async function corsPlugin(app) {
       const allowed = [
         "https://faltarah.vercel.app",
         "https://faltra-system.vercel.app",
+        "http://localhost:5173",
       ];
 
       if (!origin || allowed.includes(origin)) {

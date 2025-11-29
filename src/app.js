@@ -86,7 +86,7 @@ export async function buildApp(opts = {}) {
   app.addHook("onRequest", async (request, reply) => {
     // Skip auth routes and public routes
     const publicRoutes = [
-      "/api/auth/login",
+      "/api/users/login",
       "/api/auth/signup",
       "/api/auth/verify-otp",
       "/api/auth/resend-otp",
@@ -96,16 +96,10 @@ export async function buildApp(opts = {}) {
       "/api/subscriptions/plans",
     ];
 
-    console.log(
-      "request =================================>>>>>>>>>>>>",
-      request
-    );
-
     if (!publicRoutes.some((route) => request.url.startsWith(route))) {
       await authenticate(request, reply);
       await checkSubscriptionInfo(request, reply);
     }
-    console.log("reply =================================>>>>>>>>>>>>", reply);
   });
 
   // Health Check
