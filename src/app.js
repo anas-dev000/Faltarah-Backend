@@ -96,18 +96,9 @@ export async function buildApp(opts = {}) {
       "/api/subscriptions/plans",
     ];
 
-    if (publicRoutes.some((route) => request.url.startsWith(route))) {
-      return;
-    }
-
-    // For authenticated routes, add subscription info
-    if (request.headers.authorization) {
-      try {
-        await authenticate(request, reply);
-        await checkSubscriptionInfo(request, reply);
-      } catch (error) {
-        // Continue even if there's an error
-      }
+    if (!publicRoutes.some((route) => request.url.startsWith(route))) {
+      await authenticate(request, reply);
+      await checkSubscriptionInfo(request, reply);
     }
   });
 
