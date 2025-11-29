@@ -10,16 +10,31 @@ async function corsPlugin(app) {
         "http://localhost:5173",
       ];
 
-      if (!origin || allowed.includes(origin)) {
+      // allow origin any (Postman, mobile apps)
+      if (!origin) {
+        return cb(null, true);
+      }
+
+      if (allowed.includes(origin)) {
         cb(null, true);
       } else {
-        cb(new Error("Not allowed"), false);
+        console.error(`❌ CORS blocked origin: ${origin}`);
+        cb(new Error("Not allowed by CORS"), false);
       }
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Cookie",
+      "X-Requested-With",
+      "Accept",
+      "Origin",
+    ],
     exposedHeaders: ["Set-Cookie"],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
 }
 

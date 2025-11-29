@@ -10,7 +10,7 @@ import corsPlugin from "./plugins/cors.js";
 import helmetPlugin from "./plugins/helmet.js";
 import fastifyCookie from "@fastify/cookie";
 import fastifyMultipart from "@fastify/multipart";
-import fastifyRawBody from "fastify-raw-body"; // NEW
+import fastifyRawBody from "fastify-raw-body";
 
 // Routes
 import authRoutes from "./modules/auth/auth.routes.js";
@@ -53,14 +53,18 @@ export async function buildApp(opts = {}) {
 
   // Register plugins
   await app.register(corsPlugin);
+
   await app.register(helmetPlugin);
 
   await app.register(fastifyCookie, {
     secret: config.cookieSecret,
     parseOptions: {
       httpOnly: true,
-      sameSite: "none",
-      secure: true,
+      sameSite: config.nodeEnv === "production" ? "none" : "lax",
+      secure: config.nodeEnv === "production",
+      path: "/",
+      domain: config.nodeEnv === "production" ? undefined : "localhost",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     },
   });
 

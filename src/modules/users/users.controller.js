@@ -111,30 +111,39 @@ export const deleteById = async (request, reply) => {
  */
 export const login = async (request, reply) => {
   const { email, password } = request.body;
-  const result = await userService.loginUser(
-    request.server.prisma,
+
+  const result = await usersService.login(request.server.prisma, {
     email,
-    password
-  );
+    password,
+  });
 
-  const isProduction = process.env.NODE_ENV === "production";
+  const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  };
 
-  console.log("result =================================>>>>>>>>>>>>", result);
+  if (process.env.NODE_ENV !== "production") {
+    cookieOptions.domain = "localhost";
+  }
 
-  reply
-    .setCookie("token", result.token, {
-      httpOnly: true,
-      secure: isProduction || true,
-      sameSite: isProduction ? "none" : "lax",
-      maxAge: 24 * 60 * 60 * 1000,
-      path: "/",
-    })
-    .status(200)
-    .send({
-      success: true,
-      message: "Login successful",
-      data: result,
-    });
+  reply.setCookie("token", result.token, cookieOptions);
+
+  console.log("✅ Cookie set successfully:", {
+    token: result.token.substring(0, 20) + "...",
+    options: cookieOptions,
+  });
+
+  return reply.status(200).send({
+    success: true,
+    message: "Login successful",
+    data: {
+      user: result.user,
+      token: result.token,
+    },
+  });
 };
 
 /**
@@ -170,20 +179,17 @@ export const loginDev = async (request, reply) => {
  * User Logout
  */
 export const logout = async (request, reply) => {
-  const isProduction = process.env.NODE_ENV === "production";
+  reply.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    path: "/",
+  });
 
-  reply
-    .clearCookie("token", {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "none" : "lax",
-      path: "/",
-    })
-    .status(200)
-    .send({
-      success: true,
-      message: "You have been logged out successfully",
-    });
+  return reply.status(200).send({
+    success: true,
+    message: "Logged out successfully",
+  });
 };
 
 /**
