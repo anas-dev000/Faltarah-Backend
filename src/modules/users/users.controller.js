@@ -112,7 +112,7 @@ export const deleteById = async (request, reply) => {
 export const login = async (request, reply) => {
   const { email, password } = request.body;
 
-  const result = await usersService.login(request.server.prisma, {
+  const result = await userService.login(request.server.prisma, {
     email,
     password,
   });
