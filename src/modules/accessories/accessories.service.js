@@ -258,6 +258,6 @@ export const deleteAccessory = async (prisma, id, currentUser) => {
     throw new AppError("You can only delete accessories in your company", 403);
   }
 
-  // ✅ Delete accessory with all related records using transaction
+  //  Delete accessory with all related records using transaction
   return await accessoriesRepository.deleteByIdWithRelations(prisma, id);
 };

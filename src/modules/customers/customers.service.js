@@ -240,7 +240,7 @@ export const updateExistingCustomer = async (prisma, id, data, currentUser) => {
 };
 
 /**
- * ✅ Delete a customer by ID with cascading deletion
+ *  Delete a customer by ID with cascading deletion
  */
 export const deleteExistingCustomer = async (prisma, id, currentUser) => {
   const { role, companyId } = currentUser;
@@ -259,7 +259,7 @@ export const deleteExistingCustomer = async (prisma, id, currentUser) => {
     throw new AppError("Customer not found or access denied", 404);
   }
 
-  // ✅ Delete customer with all related records using transaction
+  //  Delete customer with all related records using transaction
   return customerRepo.deleteCustomerWithRelations(
     prisma,
     id,

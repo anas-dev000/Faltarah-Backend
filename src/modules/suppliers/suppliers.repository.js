@@ -197,7 +197,7 @@ export async function update(prisma, id, data) {
 }
 
 /**
- * ✅ Delete supplier with all related records using transaction
+ *  Delete supplier with all related records using transaction
  */
 export async function deleteByIdWithRelations(prisma, id) {
   return await prisma.$transaction(async (tx) => {
@@ -266,7 +266,7 @@ export async function deleteByIdWithRelations(prisma, id) {
 }
 
 /**
- * ✅ Check supplier relations (for information only)
+ *  Check supplier relations (for information only)
  */
 export async function checkSupplierRelations(prisma, supplierId) {
   const [productsCount, accessoriesCount] = await Promise.all([

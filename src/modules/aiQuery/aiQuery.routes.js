@@ -81,7 +81,7 @@ export default async function aiQueryRoutes(fastify) {
    * POST /api/ai-query/index-company
    * فهرسة بيانات الشركة
    *
-   * ✅ FIXED: استخدام Raw SQL بدلاً من Prisma model
+   *  FIXED: استخدام Raw SQL بدلاً من Prisma model
    */
   fastify.post("/index-company", {
     preHandler: [authenticate],
@@ -135,7 +135,7 @@ export default async function aiQueryRoutes(fastify) {
    * GET /api/ai-query/index-status/:companyId
    * التحقق من حالة الفهرسة
    *
-   * ✅ FIXED: استخدام Raw SQL
+   *  FIXED: استخدام Raw SQL
    */
   fastify.get("/index-status/:companyId", {
     preHandler: [authenticate],
@@ -154,7 +154,7 @@ export default async function aiQueryRoutes(fastify) {
           });
         }
 
-        // ✅ استخدام Raw SQL بدلاً من Prisma
+        //  استخدام Raw SQL بدلاً من Prisma
         const counts = await request.server.prisma.$queryRaw`
           SELECT entity, COUNT(*)::int as count
           FROM embedding_store

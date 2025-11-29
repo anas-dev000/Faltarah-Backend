@@ -286,7 +286,7 @@ export const bulkUpdateMaintenanceStatus = async (
 };
 
 /**
- * ✅ Delete maintenance (simple - no cascading needed)
+ *  Delete maintenance (simple - no cascading needed)
  */
 export const deleteMaintenance = async (prisma, id, currentUser) => {
   const { role, companyId } = currentUser;
@@ -311,7 +311,7 @@ export const deleteMaintenance = async (prisma, id, currentUser) => {
     throw new AppError("يمكنك فقط حذف الصيانات في شركتك", 403);
   }
 
-  // ✅ Delete maintenance (no cascading needed - maintenance is a leaf entity)
+  //  Delete maintenance (no cascading needed - maintenance is a leaf entity)
   await maintenanceRepo.deleteById(prisma, id);
 
   return { success: true };

@@ -5,7 +5,11 @@
 /**
  * Fetch all users with filtering by company
  */
-export const findAllUsers = async (prisma, companyId = null, pagination = {}) => {
+export const findAllUsers = async (
+  prisma,
+  companyId = null,
+  pagination = {}
+) => {
   const whereClause = companyId ? { companyId } : {};
 
   // Pagination
@@ -52,7 +56,7 @@ export const findAllUsers = async (prisma, companyId = null, pagination = {}) =>
       totalPages: Math.ceil(total / limit),
       hasNext: page < Math.ceil(total / limit),
       hasPrev: page > 1,
-    }
+    },
   };
 };
 
@@ -158,7 +162,7 @@ export const updateUser = async (prisma, id, data, companyId = null) => {
 };
 
 /**
- * ✅ Delete user with cascading deletion (no actual cascading needed for users in this schema)
+ *  Delete user with cascading deletion (no actual cascading needed for users in this schema)
  */
 export const deleteUser = async (prisma, id, companyId = null) => {
   const whereClause = {
