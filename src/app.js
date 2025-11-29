@@ -96,10 +96,16 @@ export async function buildApp(opts = {}) {
       "/api/subscriptions/plans",
     ];
 
+    console.log(
+      "request =================================>>>>>>>>>>>>",
+      request
+    );
+
     if (!publicRoutes.some((route) => request.url.startsWith(route))) {
       await authenticate(request, reply);
       await checkSubscriptionInfo(request, reply);
     }
+    console.log("reply =================================>>>>>>>>>>>>", reply);
   });
 
   // Health Check

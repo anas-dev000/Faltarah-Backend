@@ -16,6 +16,8 @@ export async function authenticate(request, reply) {
       token = request.headers.authorization.substring(7);
     }
 
+    console.log("token =================================>>>>>>>>>>>>", token);
+
     // 2) Check existence
     if (!token) {
       throw new AppError(
