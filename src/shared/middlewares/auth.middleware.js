@@ -5,14 +5,15 @@ export async function authenticate(request, reply) {
   try {
     let token = null;
 
-    const authHeader = request.headers.authorization;
-    if (authHeader?.startsWith("Bearer ")) {
-      token = authHeader.slice(7);
-    }
-
-    // 1) Get token
-    if (!token && request.cookies?.token) {
+    if (request.cookies?.token) {
       token = request.cookies.token;
+    } else if (request.headers.cookie) {
+      token = request.headers.cookie
+        .split("; ")
+        .find((c) => c.startsWith("token="))
+        ?.split("=")[1];
+    } else if (request.headers.authorization?.startsWith("Bearer ")) {
+      token = request.headers.authorization.substring(7);
     }
 
     // 2) Check existence
