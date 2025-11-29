@@ -33,24 +33,16 @@ export class InvoicePDFGenerator {
     const html = template(data);
 
     // 5️⃣ توليد PDF باستخدام Puppeteer
-    const browser = await puppeteer.launch({
+    const browser = await puppeteer.launch({ 
       headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-      ],
-      executablePath:
-        process.env.PUPPETEER_EXECUTABLE_PATH ||
-        (await import("puppeteer").then((p) => p.executablePath())),
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
-    const pdfBuffer = await page.pdf({
-      format: "A4",
+    const pdfBuffer = await page.pdf({ 
+      format: "A4", 
       printBackground: true,
-      margin: { top: "20px", right: "20px", bottom: "20px", left: "20px" },
+      margin: { top: "20px", right: "20px", bottom: "20px", left: "20px" }
     });
 
     await browser.close();
@@ -224,7 +216,7 @@ export class InvoicePDFGenerator {
   // دالة مساعدة لإرجاع الـ PDF كـ Base64
   async generatePDFBase64() {
     const pdfBuffer = await this.generatePDF();
-    return pdfBuffer.toString("base64");
+    return pdfBuffer.toString('base64');
   }
 }
 
