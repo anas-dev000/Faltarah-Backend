@@ -3,7 +3,10 @@
 // ==========================================
 
 import * as companyService from "./companies.service.js";
-import { uploadBufferToCloudinary, deleteFromCloudinary } from "../../shared/utils/fileUpload.js";
+import {
+  uploadBufferToCloudinary,
+  deleteFromCloudinary,
+} from "../../shared/utils/fileUpload.js";
 
 /**
  * Get all companies
@@ -72,7 +75,7 @@ export const update = async (request, reply) => {
     const { id } = request.params;
     const currentUser = request.user;
 
-    // ✅ Check if company exists
+    //  Check if company exists
     const existingCompany = await request.server.prisma.company.findUnique({
       where: { id: Number(id) },
       select: {
@@ -94,16 +97,16 @@ export const update = async (request, reply) => {
       });
     }
 
-    // ✅ Authorization check
+    //  Authorization check
     const { role, companyId } = currentUser;
-    
+
     if (role === "manager" && Number(id) !== companyId) {
       return reply.status(403).send({
         success: false,
         message: "Forbidden: You can only update your own company",
       });
     }
-    
+
     if (role === "employee") {
       return reply.status(403).send({
         success: false,
@@ -114,7 +117,7 @@ export const update = async (request, reply) => {
     oldImagePublicId = existingCompany.logoPublicId;
     let data = {};
 
-    // ✅ Handle multipart/form-data request (with image)
+    //  Handle multipart/form-data request (with image)
     if (request.isMultipart()) {
       const parts = request.parts();
       const fileBuffers = [];
@@ -129,7 +132,7 @@ export const update = async (request, reply) => {
             });
           }
 
-          // ✅ Read file into buffer
+          //  Read file into buffer
           const chunks = [];
           for await (const chunk of part.file) {
             chunks.push(chunk);
@@ -146,10 +149,11 @@ export const update = async (request, reply) => {
         }
       }
 
-      // ✅ Upload image if exists
+      //  Upload image if exists
       if (fileBuffers.length > 0) {
         // Use existing name or new name for folder structure
-        const companyName = data.name || existingCompany.name || "unknown-company";
+        const companyName =
+          data.name || existingCompany.name || "unknown-company";
 
         uploadedImage = await uploadBufferToCloudinary(
           fileBuffers[0].buffer,
@@ -163,19 +167,20 @@ export const update = async (request, reply) => {
         data.logoPublicId = uploadedImage.public_id;
       }
     } else {
-      // ✅ Regular update without image
+      //  Regular update without image
       data = request.body || {};
     }
 
-    // ✅ Manager cannot update subscription expiry date
+    //  Manager cannot update subscription expiry date
     if (currentUser.role === "manager" && data.subscriptionExpiryDate) {
       return reply.status(403).send({
         success: false,
-        message: "Forbidden: Only developers can update subscription expiry date",
+        message:
+          "Forbidden: Only developers can update subscription expiry date",
       });
     }
 
-    // ✅ Update company
+    //  Update company
     const updatedCompany = await companyService.updateExistingCompany(
       request.server.prisma,
       Number(id),
@@ -183,7 +188,7 @@ export const update = async (request, reply) => {
       currentUser
     );
 
-    // ✅ Delete old image only if new one was uploaded
+    //  Delete old image only if new one was uploaded
     if (uploadedImage && oldImagePublicId) {
       await deleteFromCloudinary(oldImagePublicId);
     }
@@ -194,13 +199,13 @@ export const update = async (request, reply) => {
       data: updatedCompany,
     });
   } catch (error) {
-    // ✅ Rollback: delete uploaded image if update failed
+    //  Rollback: delete uploaded image if update failed
     if (uploadedImage?.public_id) {
       await deleteFromCloudinary(uploadedImage.public_id);
     }
 
     console.error("❌ Error updating company:", error);
-    
+
     // Handle specific errors
     if (error.message?.includes("already exists")) {
       return reply.status(409).send({
@@ -208,7 +213,7 @@ export const update = async (request, reply) => {
         message: error.message,
       });
     }
-    
+
     if (error.message?.includes("Forbidden")) {
       return reply.status(403).send({
         success: false,

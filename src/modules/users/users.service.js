@@ -260,10 +260,7 @@ export const loginUser = async (prisma, email, password) => {
 
   // Block Developer role from /login route
   if (user.role === "developer") {
-    throw new AppError(
-      "This route is for Managers and Employees only.",
-      403
-    );
+    throw new AppError("This route is for Managers and Employees only.", 403);
   }
 
   // Checking user status
@@ -274,7 +271,7 @@ export const loginUser = async (prisma, email, password) => {
     );
   }
 
-  // ✅ CHANGED: Check subscription but don't block login
+  //  CHANGED: Check subscription but don't block login
   let subscriptionExpired = false;
   if (user.role !== "developer" && user.companyId) {
     const now = new Date();
@@ -309,7 +306,6 @@ export const loginUser = async (prisma, email, password) => {
   };
 };
 
-
 /**
  * developer Login
  * @param {Object} prisma - Prisma client
@@ -338,7 +334,7 @@ export const loginDevUser = async (prisma, email, password) => {
     );
   }
 
-  // ✅ CHANGED: Check subscription but don't block login
+  //  CHANGED: Check subscription but don't block login
   let subscriptionExpired = false;
   if (user.role !== "developer" && user.companyId) {
     const now = new Date();

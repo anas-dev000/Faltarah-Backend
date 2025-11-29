@@ -41,12 +41,12 @@ export const findCompanyById = async (
   id,
   restrictToCompanyId = null
 ) => {
-  // ✅ FIXED: Build where clause properly
+  //  FIXED: Build where clause properly
   const whereClause = {
     id: id, // Always use the provided id
   };
 
-  // ✅ Only add restriction if restrictToCompanyId is provided AND different from id
+  //  Only add restriction if restrictToCompanyId is provided AND different from id
   if (restrictToCompanyId !== null && restrictToCompanyId !== id) {
     // If user is restricted to a specific company, return null if they try to access another
     return null;
@@ -196,7 +196,7 @@ export const checkCompanyRelations = async (prisma, id) => {
 };
 
 /**
- * ✅ Delete company with all related records using transaction
+ *  Delete company with all related records using transaction
  * Note: Most relations already have CASCADE in schema, but we handle everything explicitly
  */
 export const deleteCompanyWithRelations = async (prisma, id) => {

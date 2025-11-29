@@ -6,7 +6,13 @@
 /**
  * Find all invoices with optional company filter
  */
-export async function findAll(prisma, companyId = null, filters = {}, skip = 0, take = 10) {
+export async function findAll(
+  prisma,
+  companyId = null,
+  filters = {},
+  skip = 0,
+  take = 10
+) {
   const where = {};
 
   if (companyId !== null) {
@@ -224,7 +230,7 @@ export async function update(prisma, id, data) {
 }
 
 /**
- * ✅ Delete invoice with all related records using transaction
+ *  Delete invoice with all related records using transaction
  */
 export async function deleteByIdWithRelations(prisma, id) {
   return await prisma.$transaction(async (tx) => {

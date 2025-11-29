@@ -4,7 +4,12 @@
 
 // import cloudinary from "../../shared/utils/cloudinary.js";
 // import { uploadFile,deleteFile } from "../../shared/utils/fileUpload.js";
-import { uploadToCloudinary, deleteFromCloudinary, deleteCloudinaryFolder, uploadBufferToCloudinary } from "../../shared/utils/fileUpload.js";
+import {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+  deleteCloudinaryFolder,
+  uploadBufferToCloudinary,
+} from "../../shared/utils/fileUpload.js";
 
 import * as customerService from "./customers.service.js";
 
@@ -32,7 +37,6 @@ export const getAll = async (request, reply) => {
     totalPages: result.totalPages,
   });
 };
-
 
 /**
  * Get customer by ID
@@ -154,8 +158,7 @@ export const getCount = async (request, reply) => {
   });
 };
 
-
-// cloudinary 2 
+// cloudinary 2
 // export const create = async (request, reply) => {
 //   let uploadedImageUrl = null; // Track uploaded file URL
 
@@ -210,7 +213,6 @@ export const getCount = async (request, reply) => {
 //     }
 //     console.log(companyName);
 
-
 //     // Upload image to Cloudinary with proper folder structure
 //     if (imageFile) {
 //       uploadedImageUrl = await uploadToCloudinary(imageFile, {
@@ -242,7 +244,7 @@ export const getCount = async (request, reply) => {
 //   }
 // };
 
-// local save 
+// local save
 // export const create = async (request, reply) => {
 //   let uploadedFilePath = null; // Track uploaded file outside try block
 
@@ -363,7 +365,7 @@ export const create = async (request, reply) => {
     const data = {};
     const fileBuffers = [];
 
-    // ✅ Step 1: Collect ALL parts first (fields + file buffer)
+    //  Step 1: Collect ALL parts first (fields + file buffer)
     for await (const part of parts) {
       if (part.type === "file" && part.fieldname === "idCardImage") {
         const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
@@ -391,7 +393,7 @@ export const create = async (request, reply) => {
       }
     }
 
-    // ✅ Step 2: Now upload with complete data
+    //  Step 2: Now upload with complete data
     if (fileBuffers.length > 0) {
       const companyName = await getCompanyName(
         request.server.prisma,
@@ -429,9 +431,8 @@ export const create = async (request, reply) => {
       message: "Customer created successfully",
       data: customer,
     });
-  }
-  catch (error) {
-    // ✅ Clean up: Delete uploaded image if customer creation fails
+  } catch (error) {
+    //  Clean up: Delete uploaded image if customer creation fails
     if (uploadedImage?.public_id) {
       await deleteFromCloudinary(uploadedImage.public_id);
     }
@@ -442,8 +443,6 @@ export const create = async (request, reply) => {
     throw error;
   }
 };
-
-
 
 /**
  * Update an existing customer with optional ID card image upload
@@ -459,7 +458,7 @@ export const update = async (request, reply) => {
     const { id } = request.params;
     const currentUser = request.user;
 
-    // ✅ تحقق من وجود العميل
+    //  تحقق من وجود العميل
     const existingCustomer = await request.server.prisma.customer.findUnique({
       where: { id: Number(id) },
       select: {
@@ -489,7 +488,7 @@ export const update = async (request, reply) => {
     oldImagePublicId = existingCustomer.idCardImagePublicId;
     let data = {};
 
-    // ✅ لو الريكوست فيها صورة multipart/form-data
+    //  لو الريكوست فيها صورة multipart/form-data
     if (request.isMultipart()) {
       const parts = request.parts();
       const fileBuffers = [];
@@ -504,7 +503,7 @@ export const update = async (request, reply) => {
             });
           }
 
-          // ✅ اقرأ الملف إلى buffer
+          //  اقرأ الملف إلى buffer
           const chunks = [];
           for await (const chunk of part.file) {
             chunks.push(chunk);
@@ -521,7 +520,7 @@ export const update = async (request, reply) => {
         }
       }
 
-      // ✅ ارفع الصورة لو موجودة
+      //  ارفع الصورة لو موجودة
       if (fileBuffers.length > 0) {
         const companyName = await getCompanyName(
           request.server.prisma,
@@ -546,11 +545,11 @@ export const update = async (request, reply) => {
         data.idCardImagePublicId = uploadedImage.public_id;
       }
     } else {
-      // ✅ تعديل عادي بدون صورة
+      //  تعديل عادي بدون صورة
       data = request.body;
     }
 
-    // ✅ تحديث العميل
+    //  تحديث العميل
     const updatedCustomer = await customerService.updateExistingCustomer(
       request.server.prisma,
       Number(id),
@@ -558,7 +557,7 @@ export const update = async (request, reply) => {
       currentUser
     );
 
-    // ✅ حذف الصورة القديمة فقط لو في جديدة
+    //  حذف الصورة القديمة فقط لو في جديدة
     if (uploadedImage && oldImagePublicId) {
       await deleteFromCloudinary(oldImagePublicId);
     }
@@ -569,7 +568,7 @@ export const update = async (request, reply) => {
       data: updatedCustomer,
     });
   } catch (error) {
-    // ✅ في حالة فشل، نحذف الصورة الجديدة لو تم رفعها
+    //  في حالة فشل، نحذف الصورة الجديدة لو تم رفعها
     if (uploadedImage?.public_id) {
       await deleteFromCloudinary(uploadedImage.public_id);
     }
@@ -579,7 +578,6 @@ export const update = async (request, reply) => {
   }
 };
 
-
 /**
  * Delete customer by ID with image cleanup
  */
@@ -588,7 +586,7 @@ export const deleteById = async (request, reply) => {
     const { id } = request.params;
     const currentUser = request.user;
 
-    // ✅ Get customer data before deletion (to get image info)
+    //  Get customer data before deletion (to get image info)
     const customer = await request.server.prisma.customer.findUnique({
       where: { id: Number(id) },
       select: {
@@ -607,15 +605,14 @@ export const deleteById = async (request, reply) => {
       });
     }
 
-    // ✅ Delete employee from database
+    //  Delete employee from database
     await customerService.deleteExistingCustomer(
       request.server.prisma,
       Number(id),
       currentUser
     );
 
-
-    // ✅ Delete individual image from Cloudinary (if exists)
+    //  Delete individual image from Cloudinary (if exists)
     if (customer.idCardImagePublicId) {
       try {
         await deleteFromCloudinary(customer.idCardImagePublicId);
@@ -624,7 +621,7 @@ export const deleteById = async (request, reply) => {
       }
     }
 
-    // ✅ Delete entire employee folder using dynamic path
+    //  Delete entire employee folder using dynamic path
     try {
       const companyName = await getCompanyName(
         request.server.prisma,
@@ -650,7 +647,7 @@ export const deleteById = async (request, reply) => {
     console.error("❌ Error deleting customer:", error);
 
     // Check if it's a database error vs Cloudinary error
-    if (error.code === 'P2025') {
+    if (error.code === "P2025") {
       return reply.status(404).send({
         success: false,
         message: "Customer not found",

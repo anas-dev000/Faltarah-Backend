@@ -18,9 +18,9 @@ const EMBEDDING_PROVIDER = process.env.EMBEDDING_PROVIDER || "gemini";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_EMBEDDING_MODEL = "text-embedding-3-small";
 
-// Gemini Configuration - ✅ FIXED: استخدام النموذج الصحيح
+// Gemini Configuration -  FIXED: استخدام النموذج الصحيح
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_EMBEDDING_MODEL = "models/text-embedding-004"; // ✅ مع prefix
+const GEMINI_EMBEDDING_MODEL = "models/text-embedding-004"; //  مع prefix
 
 // Initialize Gemini
 let genAI = null;
@@ -59,7 +59,7 @@ export async function ensureTable(prisma) {
       ON embedding_store(company_id)
     `);
 
-    console.log("✅ Embedding table ready");
+    console.log(" Embedding table ready");
   } catch (error) {
     // تجاهل الخطأ إذا كان الجدول موجود بالفعل
     if (!error.message.includes("already exists")) {
@@ -106,7 +106,7 @@ async function createOpenAIEmbedding(text) {
 
 /**
  * إنشاء embedding باستخدام Google Gemini
- * ✅ FIXED: استخدام النموذج الصحيح
+ *  FIXED: استخدام النموذج الصحيح
  */
 async function createGeminiEmbedding(text) {
   if (!GEMINI_API_KEY || !genAI) {
@@ -114,7 +114,7 @@ async function createGeminiEmbedding(text) {
   }
 
   const model = genAI.getGenerativeModel({
-    model: GEMINI_EMBEDDING_MODEL, // ✅ models/text-embedding-004
+    model: GEMINI_EMBEDDING_MODEL, //  models/text-embedding-004
   });
 
   const result = await model.embedContent(text);

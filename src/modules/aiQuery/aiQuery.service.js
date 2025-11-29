@@ -36,7 +36,7 @@ export const processSmartQuery = async (prisma, queryText, currentUser) => {
 
     // 2. إنشاء embedding للاستعلام
     const queryEmbedding = await createEmbedding(queryText);
-    console.log(`✅ Query embedding created`);
+    console.log(` Query embedding created`);
 
     // 3. البحث عن بيانات مشابهة (RAG Retrieval)
     const similarChunks = await retrieveSimilarChunks(
@@ -59,7 +59,7 @@ export const processSmartQuery = async (prisma, queryText, currentUser) => {
     );
     Object.assign(filters, extractedFilters);
 
-    // ✅ FIXED: Debug filters before query execution
+    //  FIXED: Debug filters before query execution
     console.log(
       `🔍 Extracted filters for ${queryAnalysis.type}:`,
       JSON.stringify(filters, null, 2)
@@ -74,12 +74,12 @@ export const processSmartQuery = async (prisma, queryText, currentUser) => {
       role
     );
 
-    console.log(`✅ Found ${results.length} results from database`);
+    console.log(` Found ${results.length} results from database`);
 
     // 7. توليد الإجابة بـ AI مع RAG Context
     let aiAnswer = await generateRAGResponse(queryText, ragContext, results);
 
-    // ✅ FIXED: Improved fallback logic for empty results
+    //  FIXED: Improved fallback logic for empty results
     if (results.length === 0) {
       aiAnswer = `لم يتم العثور على نتائج مطابقة لاستعلامك "${queryText}". يرجى تعديل الشروط أو التحقق من البيانات.`;
     } else if (aiAnswer.includes("لم يتم العثور") && results.length > 0) {
@@ -152,7 +152,7 @@ async function analyzeQueryWithAI(queryText) {
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    // ✅ FIXED: Enhanced prompt for better accuracy and context awareness
+    //  FIXED: Enhanced prompt for better accuracy and context awareness
     const prompt = `أنت محلل استعلامات ذكي متخصص في أنظمة إدارة الفواتير والعملاء. حلل الاستعلام بعناية وحدد نوع البيانات المطلوبة فقط بناءً على الكلمات الرئيسية الواضحة. تجنب الافتراضات غير المدعومة.
 
 الاستعلام: "${queryText}"
@@ -247,7 +247,7 @@ function extractFiltersFromQuery(queryText, queryType) {
   if (queryType === "invoice") {
     const numbers = queryText.match(/\d+(?:\.\d+)?/g); // Match floats too
 
-    // ✅ FIXED: Extract amount filters more precisely
+    //  FIXED: Extract amount filters more precisely
     if (
       (lowerText.includes("أقل") ||
         lowerText.includes("اقل") ||
@@ -267,7 +267,7 @@ function extractFiltersFromQuery(queryText, queryType) {
       filters.totalAmountGte = parseFloat(numbers[numbers.length - 1]);
     }
 
-    // ✅ FIXED: Year detection - Only if "سنة" mentioned OR 4-digit number in year-like context (1900-2100)
+    //  FIXED: Year detection - Only if "سنة" mentioned OR 4-digit number in year-like context (1900-2100)
     const yearMatch = queryText.match(/\b(19|20)\d{2}\b/); // Match realistic years only
     if ((lowerText.includes("سنة") || lowerText.includes("عام")) && yearMatch) {
       filters.year = parseInt(yearMatch[0]);
@@ -313,7 +313,7 @@ function extractFiltersFromQuery(queryText, queryType) {
     }
   }
 
-  // ✅ FIXED: Log extracted filters for debugging
+  //  FIXED: Log extracted filters for debugging
   console.log(`🔍 Extracted filters from text:`, filters);
 
   return filters;
@@ -344,7 +344,7 @@ function buildCustomerQuery(text, analysis) {
   if (lower.includes("تركيب")) filters.customerType = "Installation";
   if (lower.includes("صيانة")) filters.customerType = "Maintenance";
 
-  // ✅ FIXED: Governorate/City extraction from keywords
+  //  FIXED: Governorate/City extraction from keywords
   if (
     analysis.keywords.some(
       (kw) =>
@@ -396,7 +396,7 @@ function buildInvoiceQuery(text, analysis) {
   if (lower.includes("كاش")) filters.saleType = "Cash";
   if (lower.includes("تقسيط")) filters.saleType = "Installment";
 
-  // ✅ FIXED: No automatic date filter unless year is explicitly set
+  //  FIXED: No automatic date filter unless year is explicitly set
 
   return filters;
 }

@@ -275,22 +275,22 @@ export const sendWelcomeEmail = async (email, fullName, companyName) => {
             <h3 style="color: #374151; margin-top: 30px;">ماذا يمكنك فعله الآن:</h3>
             
             <div class="feature">
-              <strong>✅ إدارة المستخدمين</strong>
+              <strong> إدارة المستخدمين</strong>
               <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">أضف وأدر المستخدمين والصلاحيات</p>
             </div>
             
             <div class="feature">
-              <strong>✅ إدارة المنتجات والإكسسوارات</strong>
+              <strong> إدارة المنتجات والإكسسوارات</strong>
               <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">سجل وتتبع جميع المنتجات والمخزون</p>
             </div>
             
             <div class="feature">
-              <strong>✅ نظام الفواتير الشامل</strong>
+              <strong> نظام الفواتير الشامل</strong>
               <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">إصدار وإدارة الفواتير بسهولة</p>
             </div>
             
             <div class="feature">
-              <strong>✅ تقارير وإحصائيات</strong>
+              <strong> تقارير وإحصائيات</strong>
               <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">تقارير تفصيلية في الوقت الفعلي</p>
             </div>
             
@@ -325,7 +325,7 @@ export const sendWelcomeEmail = async (email, fullName, companyName) => {
 
 /**
  * إرسال بريد تأكيد الاشتراك
- */ 
+ */
 export const sendSubscriptionConfirmationEmail = async (
   email,
   companyName,
@@ -339,7 +339,7 @@ export const sendSubscriptionConfirmationEmail = async (
   const mailOptions = {
     from: `"فلترة - نظام إدارة الفلاتر" <${process.env.EMAIL_FROM}>`,
     to: email,
-    subject: "تأكيد تفعيل الاشتراك ✅",
+    subject: "تأكيد تفعيل الاشتراك ",
     html: `
       <!DOCTYPE html>
       <html dir="rtl" lang="ar">
@@ -418,7 +418,7 @@ export const sendSubscriptionConfirmationEmail = async (
             <h1>🎉 تم تفعيل اشتراكك بنجاح!</h1>
           </div>
           <div class="content">
-            <div class="success-icon">✅</div>
+            <div class="success-icon"></div>
             
             <p>مرحباً <strong>${companyName}</strong>،</p>
             
@@ -454,7 +454,7 @@ export const sendSubscriptionConfirmationEmail = async (
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log(`✅ Subscription confirmation email sent to ${email}`);
+    console.log(` Subscription confirmation email sent to ${email}`);
   } catch (error) {
     console.error("❌ Error sending subscription confirmation email:", error);
     throw error;
@@ -599,7 +599,7 @@ export const sendSubscriptionExpiryWarningEmail = async (
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log(`✅ Expiry warning email sent to ${email}`);
+    console.log(` Expiry warning email sent to ${email}`);
   } catch (error) {
     console.error("❌ Error sending expiry warning email:", error);
     throw error;
@@ -740,14 +740,12 @@ export const sendSubscriptionExpiredEmail = async (email, companyName) => {
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log(`✅ Subscription expired email sent to ${email}`);
+    console.log(` Subscription expired email sent to ${email}`);
   } catch (error) {
     console.error("❌ Error sending subscription expired email:", error);
     throw error;
   }
 };
-
-
 
 /**
  * إرسال إيميل عرض خصم 25% (بعد 20 يوم من التسجيل)
@@ -924,14 +922,14 @@ export const sendDiscountOfferEmail = async (email, companyName) => {
         </div>
       </body>
       </html>
-    `
+    `,
   };
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log(`✅ Discount offer email sent to ${email}`);
+    console.log(` Discount offer email sent to ${email}`);
   } catch (error) {
-    console.error('❌ Error sending discount email:', error);
+    console.error("❌ Error sending discount email:", error);
     throw error;
   }
 };
@@ -1017,7 +1015,7 @@ export const sendFinalWarningEmail = async (email, companyName, daysLeft) => {
             <div class="countdown">
               <h2>${daysLeft}</h2>
               <p style="margin: 10px 0 0 0; font-size: 24px; font-weight: bold; color: #2d3436;">
-                ${daysLeft === 1 ? 'يوم واحد' : 'أيام'} حتى حذف بياناتك نهائياً!
+                ${daysLeft === 1 ? "يوم واحد" : "أيام"} حتى حذف بياناتك نهائياً!
               </p>
             </div>
             
@@ -1031,7 +1029,9 @@ export const sendFinalWarningEmail = async (email, companyName, daysLeft) => {
             </p>
             
             <div style="text-align: center; margin: 40px 0;">
-              <a href="${config.frontend.url}/subscription?discount=25" class="button">
+              <a href="${
+                config.frontend.url
+              }/subscription?discount=25" class="button">
                 احفظ بياناتك الآن!
               </a>
             </div>
@@ -1039,14 +1039,14 @@ export const sendFinalWarningEmail = async (email, companyName, daysLeft) => {
         </div>
       </body>
       </html>
-    `
+    `,
   };
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log(`✅ Final warning email sent to ${email}`);
+    console.log(` Final warning email sent to ${email}`);
   } catch (error) {
-    console.error('❌ Error sending final warning:', error);
+    console.error("❌ Error sending final warning:", error);
     throw error;
   }
 };

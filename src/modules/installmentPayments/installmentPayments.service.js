@@ -212,7 +212,7 @@ export async function updatePayment(prisma, id, data, currentUser) {
     );
   }
 
-  // ✅ إذا كان Paid، منع التعديل
+  //  إذا كان Paid، منع التعديل
   if (payment.status === "Paid") {
     throw new AppError(
       "Cannot update a paid payment.",
@@ -221,7 +221,7 @@ export async function updatePayment(prisma, id, data, currentUser) {
     );
   }
 
-  // ✅ إذا كان Partial، تحقق أنه آخر قسط
+  //  إذا كان Partial، تحقق أنه آخر قسط
   if (payment.status === "Partial") {
     const allPayments =
       await installmentPaymentsRepository.findPaymentsByInstallmentId(
@@ -242,7 +242,7 @@ export async function updatePayment(prisma, id, data, currentUser) {
     }
   }
 
-  // ✅ إذا كان Pending، السماح بالدفع عليه
+  //  إذا كان Pending، السماح بالدفع عليه
   if (data.amountPaid !== undefined) {
     const amountPaid = parseFloat(data.amountPaid);
 
@@ -267,7 +267,7 @@ export async function updatePayment(prisma, id, data, currentUser) {
       payment.amountDue
     );
 
-    // ✅ تحديث القسط الحالي
+    //  تحديث القسط الحالي
     const updateData = {
       amountPaid,
       status: newStatus,
@@ -279,7 +279,7 @@ export async function updatePayment(prisma, id, data, currentUser) {
 
     await installmentPaymentsRepository.updatePayment(prisma, id, updateData);
 
-    // ✅ إنشاء القسط التالي إذا لم يكن آخر قسط
+    //  إنشاء القسط التالي إذا لم يكن آخر قسط
     const allPayments =
       await installmentPaymentsRepository.findPaymentsByInstallmentId(
         prisma,
@@ -317,7 +317,7 @@ export async function updatePayment(prisma, id, data, currentUser) {
     return await installmentPaymentsRepository.findPaymentById(prisma, id);
   }
 
-  // ✅ تحديث الملاحظات فقط
+  //  تحديث الملاحظات فقط
   if (data.notes !== undefined) {
     return await installmentPaymentsRepository.updatePayment(prisma, id, {
       notes: data.notes,

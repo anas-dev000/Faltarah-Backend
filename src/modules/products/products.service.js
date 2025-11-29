@@ -8,11 +8,21 @@ import { AppError } from "../../shared/errors/AppError.js";
 /**
  * Get all products with filters
  */
-export const getAllProducts = async (prisma, currentUser, filters = {}, pagination = {}) => {
+export const getAllProducts = async (
+  prisma,
+  currentUser,
+  filters = {},
+  pagination = {}
+) => {
   const { role, companyId } = currentUser;
   const targetCompanyId = role === "developer" ? null : companyId;
 
-  return await productsRepository.findAll(prisma, targetCompanyId, filters, pagination);
+  return await productsRepository.findAll(
+    prisma,
+    targetCompanyId,
+    filters,
+    pagination
+  );
 };
 
 /**
@@ -245,7 +255,7 @@ export const updateProductStock = async (prisma, id, newStock, currentUser) => {
 };
 
 /**
- * ✅ Delete product with cascading deletion
+ *  Delete product with cascading deletion
  */
 export const deleteProduct = async (prisma, id, currentUser) => {
   const { role, companyId } = currentUser;
@@ -262,6 +272,6 @@ export const deleteProduct = async (prisma, id, currentUser) => {
     throw new AppError("You can only delete products in your company", 403);
   }
 
-  // ✅ Delete product with all relations
+  //  Delete product with all relations
   return await productsRepository.deleteByIdWithRelations(prisma, id);
 };

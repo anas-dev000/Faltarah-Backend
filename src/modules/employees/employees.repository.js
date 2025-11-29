@@ -273,7 +273,7 @@ export const deleteEmployee = async (prisma, id, companyId = null) => {
 };
 
 /**
- * ✅ Delete employee with all related records using transaction
+ *  Delete employee with all related records using transaction
  */
 export const deleteEmployeeWithRelations = async (
   prisma,
