@@ -3,7 +3,10 @@ import cors from "@fastify/cors";
 
 async function corsPlugin(app) {
   app.register(cors, {
-    origin: ["http://localhost:5173", "http://localhost:4200"],
+    origin: [
+      "https://faltarah.vercel.app/",
+      "https://faltra-system.vercel.app/",
+    ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
